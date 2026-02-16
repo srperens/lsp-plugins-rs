@@ -20,9 +20,14 @@
 //!
 //! ## Design
 //!
-//! This is a generic (portable) implementation. SIMD optimizations are
-//! planned for a future phase. The FFT delegates to `rustfft` which
-//! already provides SIMD-optimized implementations.
+//! Buffer-processing functions use runtime SIMD dispatch via the
+//! `multiversion` crate. Each annotated function is compiled for
+//! AVX2+FMA, AVX, SSE4.1, and NEON targets; the best variant is
+//! selected automatically at startup. The FFT delegates to `rustfft`
+//! which already provides SIMD-optimized implementations.
+
+#[macro_use]
+mod simd;
 
 pub mod complex;
 pub mod convolution;

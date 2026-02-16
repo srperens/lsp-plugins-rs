@@ -6,6 +6,8 @@
 //! These functions handle denormals, NaN, and infinity to ensure
 //! clean signal paths in DSP processing.
 
+use multiversion::multiversion;
+
 /// Sanitize a single float value: flush denormals, NaN, and infinity to zero.
 #[inline]
 pub fn sanitize(x: f32) -> f32 {
@@ -17,6 +19,7 @@ pub fn sanitize(x: f32) -> f32 {
 }
 
 /// Sanitize a buffer of floats in place: flush denormals, NaN, and infinity to zero.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon"))]
 pub fn sanitize_buf(buf: &mut [f32]) {
     for sample in buf.iter_mut() {
         *sample = sanitize(*sample);
@@ -30,6 +33,7 @@ pub fn limit1(x: f32) -> f32 {
 }
 
 /// Limit a buffer of floats to the range `[-1.0, 1.0]` in place.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn limit1_buf(buf: &mut [f32]) {
     for sample in buf.iter_mut() {
         *sample = limit1(*sample);
@@ -43,6 +47,7 @@ pub fn limit(x: f32, min: f32, max: f32) -> f32 {
 }
 
 /// Absolute value of each sample in a buffer.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn abs_buf(dst: &mut [f32], src: &[f32]) {
     assert!(dst.len() >= src.len(), "dst too small");
     for (d, s) in dst.iter_mut().zip(src.iter()) {
@@ -51,6 +56,7 @@ pub fn abs_buf(dst: &mut [f32], src: &[f32]) {
 }
 
 /// Absolute value in place.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn abs_buf_inplace(buf: &mut [f32]) {
     for sample in buf.iter_mut() {
         *sample = sample.abs();

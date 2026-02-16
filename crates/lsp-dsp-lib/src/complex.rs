@@ -7,7 +7,10 @@
 //! real and imaginary float arrays (SOA layout), which is the format
 //! used throughout lsp-dsp-lib.
 
+use multiversion::multiversion;
+
 /// Complex multiply: `(dst_re, dst_im) = (a_re, a_im) * (b_re, b_im)`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn complex_mul(
     dst_re: &mut [f32],
     dst_im: &mut [f32],
@@ -27,6 +30,7 @@ pub fn complex_mul(
 }
 
 /// Complex division: `(dst_re, dst_im) = (a_re, a_im) / (b_re, b_im)`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn complex_div(
     dst_re: &mut [f32],
     dst_im: &mut [f32],
@@ -52,6 +56,7 @@ pub fn complex_div(
 }
 
 /// Complex conjugate: `(dst_re, dst_im) = (src_re, -src_im)`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn complex_conj(dst_re: &mut [f32], dst_im: &mut [f32], src_re: &[f32], src_im: &[f32]) {
     for i in 0..dst_re.len().min(dst_im.len()) {
         dst_re[i] = src_re[i];
@@ -60,6 +65,7 @@ pub fn complex_conj(dst_re: &mut [f32], dst_im: &mut [f32], src_re: &[f32], src_
 }
 
 /// Complex magnitude: `dst[i] = sqrt(re[i]^2 + im[i]^2)`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn complex_mag(dst: &mut [f32], re: &[f32], im: &[f32]) {
     for i in 0..dst.len() {
         dst[i] = (re[i] * re[i] + im[i] * im[i]).sqrt();
@@ -67,6 +73,7 @@ pub fn complex_mag(dst: &mut [f32], re: &[f32], im: &[f32]) {
 }
 
 /// Complex phase (argument): `dst[i] = atan2(im[i], re[i])`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn complex_arg(dst: &mut [f32], re: &[f32], im: &[f32]) {
     for i in 0..dst.len() {
         dst[i] = im[i].atan2(re[i]);
@@ -74,6 +81,7 @@ pub fn complex_arg(dst: &mut [f32], re: &[f32], im: &[f32]) {
 }
 
 /// Convert polar to rectangular: `re[i] = mag[i] * cos(arg[i])`, etc.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn complex_from_polar(dst_re: &mut [f32], dst_im: &mut [f32], mag: &[f32], arg: &[f32]) {
     for i in 0..dst_re.len().min(dst_im.len()) {
         dst_re[i] = mag[i] * arg[i].cos();
@@ -82,6 +90,7 @@ pub fn complex_from_polar(dst_re: &mut [f32], dst_im: &mut [f32], mag: &[f32], a
 }
 
 /// Scale complex numbers: `(dst_re, dst_im) = (src_re * k, src_im * k)`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn complex_scale(
     dst_re: &mut [f32],
     dst_im: &mut [f32],

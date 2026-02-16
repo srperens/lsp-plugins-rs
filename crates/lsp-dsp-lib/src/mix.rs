@@ -9,7 +9,10 @@
 // The 4-source variants intentionally mirror the C++ API signature.
 #![allow(clippy::too_many_arguments)]
 
+use multiversion::multiversion;
+
 /// Mix `dst` with `src` using gains: `dst[i] = dst[i]*k1 + src[i]*k2`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn mix2(dst: &mut [f32], src: &[f32], k1: f32, k2: f32) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         *d = *d * k1 + *s * k2;
@@ -17,6 +20,7 @@ pub fn mix2(dst: &mut [f32], src: &[f32], k1: f32, k2: f32) {
 }
 
 /// Copy-mix two sources into `dst`: `dst[i] = src1[i]*k1 + src2[i]*k2`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn mix_copy2(dst: &mut [f32], src1: &[f32], src2: &[f32], k1: f32, k2: f32) {
     for ((d, s1), s2) in dst.iter_mut().zip(src1.iter()).zip(src2.iter()) {
         *d = *s1 * k1 + *s2 * k2;
@@ -24,6 +28,7 @@ pub fn mix_copy2(dst: &mut [f32], src1: &[f32], src2: &[f32], k1: f32, k2: f32) 
 }
 
 /// Add-mix two sources into `dst`: `dst[i] += src1[i]*k1 + src2[i]*k2`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn mix_add2(dst: &mut [f32], src1: &[f32], src2: &[f32], k1: f32, k2: f32) {
     for ((d, s1), s2) in dst.iter_mut().zip(src1.iter()).zip(src2.iter()) {
         *d += *s1 * k1 + *s2 * k2;
@@ -31,6 +36,7 @@ pub fn mix_add2(dst: &mut [f32], src1: &[f32], src2: &[f32], k1: f32, k2: f32) {
 }
 
 /// Mix `dst` with two sources: `dst[i] = dst[i]*k1 + src1[i]*k2 + src2[i]*k3`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn mix3(dst: &mut [f32], src1: &[f32], src2: &[f32], k1: f32, k2: f32, k3: f32) {
     for ((d, s1), s2) in dst.iter_mut().zip(src1.iter()).zip(src2.iter()) {
         *d = *d * k1 + *s1 * k2 + *s2 * k3;
@@ -38,6 +44,7 @@ pub fn mix3(dst: &mut [f32], src1: &[f32], src2: &[f32], k1: f32, k2: f32, k3: f
 }
 
 /// Copy-mix three sources into `dst`: `dst[i] = src1[i]*k1 + src2[i]*k2 + src3[i]*k3`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn mix_copy3(
     dst: &mut [f32],
     src1: &[f32],
@@ -58,6 +65,7 @@ pub fn mix_copy3(
 }
 
 /// Add-mix three sources into `dst`: `dst[i] += src1[i]*k1 + src2[i]*k2 + src3[i]*k3`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn mix_add3(
     dst: &mut [f32],
     src1: &[f32],
@@ -79,6 +87,7 @@ pub fn mix_add3(
 
 /// Mix `dst` with three sources:
 /// `dst[i] = dst[i]*k1 + src1[i]*k2 + src2[i]*k3 + src3[i]*k4`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn mix4(
     dst: &mut [f32],
     src1: &[f32],
@@ -100,6 +109,7 @@ pub fn mix4(
 }
 
 /// Copy-mix four sources into `dst`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn mix_copy4(
     dst: &mut [f32],
     src1: &[f32],
@@ -123,6 +133,7 @@ pub fn mix_copy4(
 }
 
 /// Add-mix four sources into `dst`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn mix_add4(
     dst: &mut [f32],
     src1: &[f32],

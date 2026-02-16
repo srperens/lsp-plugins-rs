@@ -3,22 +3,28 @@
 
 //! Horizontal (reduction) operations on float buffers.
 
+use multiversion::multiversion;
+
 /// Sum of all elements.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn sum(src: &[f32]) -> f32 {
     src.iter().sum()
 }
 
 /// Sum of absolute values.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn abs_sum(src: &[f32]) -> f32 {
     src.iter().map(|x| x.abs()).sum()
 }
 
 /// Sum of squares.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn sqr_sum(src: &[f32]) -> f32 {
     src.iter().map(|x| x * x).sum()
 }
 
 /// Root mean square (RMS).
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn rms(src: &[f32]) -> f32 {
     if src.is_empty() {
         return 0.0;
@@ -27,6 +33,7 @@ pub fn rms(src: &[f32]) -> f32 {
 }
 
 /// Mean (average).
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn mean(src: &[f32]) -> f32 {
     if src.is_empty() {
         return 0.0;
@@ -35,16 +42,19 @@ pub fn mean(src: &[f32]) -> f32 {
 }
 
 /// Find the minimum value.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn min(src: &[f32]) -> f32 {
     src.iter().copied().fold(f32::INFINITY, f32::min)
 }
 
 /// Find the maximum value.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn max(src: &[f32]) -> f32 {
     src.iter().copied().fold(f32::NEG_INFINITY, f32::max)
 }
 
 /// Find both minimum and maximum.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn min_max(src: &[f32]) -> (f32, f32) {
     let mut lo = f32::INFINITY;
     let mut hi = f32::NEG_INFINITY;
@@ -56,6 +66,7 @@ pub fn min_max(src: &[f32]) -> (f32, f32) {
 }
 
 /// Find the index of the minimum value.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn imin(src: &[f32]) -> usize {
     src.iter()
         .enumerate()
@@ -65,6 +76,7 @@ pub fn imin(src: &[f32]) -> usize {
 }
 
 /// Find the index of the maximum value.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn imax(src: &[f32]) -> usize {
     src.iter()
         .enumerate()
@@ -74,6 +86,7 @@ pub fn imax(src: &[f32]) -> usize {
 }
 
 /// Find the maximum absolute value (peak amplitude).
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn abs_max(src: &[f32]) -> f32 {
     src.iter().map(|x| x.abs()).fold(0.0f32, f32::max)
 }

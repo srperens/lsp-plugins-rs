@@ -8,6 +8,7 @@
 //! (attack/release) are handled in `lsp-dsp-units`.
 
 use crate::types::{CompressorX2, ExpanderKnee, GateKnee};
+use multiversion::multiversion;
 
 // ─── Compressor ────────────────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ use crate::types::{CompressorX2, ExpanderKnee, GateKnee};
 /// - Above knee: linear gain reduction in log domain
 ///
 /// Output is a gain multiplier (not the processed signal).
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn compressor_x2_gain(dst: &mut [f32], src: &[f32], c: &CompressorX2) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         let x = s.abs();
@@ -53,6 +55,7 @@ pub fn compressor_x2_gain(dst: &mut [f32], src: &[f32], c: &CompressorX2) {
 /// Compute dual-knee compressor curve: `dst[i] = gain(|src[i]|) * |src[i]|`.
 ///
 /// Same as [`compressor_x2_gain`] but multiplied by the input amplitude.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn compressor_x2_curve(dst: &mut [f32], src: &[f32], c: &CompressorX2) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         let x = s.abs();
@@ -92,6 +95,7 @@ pub fn compressor_x2_curve(dst: &mut [f32], src: &[f32], c: &CompressorX2) {
 /// - Below `start`: `dst[i] = gain_start`
 /// - Above `end`: `dst[i] = gain_end`
 /// - In transition: cubic Hermite interpolation in log domain
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn gate_x1_gain(dst: &mut [f32], src: &[f32], c: &GateKnee) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         let x = s.abs();
@@ -107,6 +111,7 @@ pub fn gate_x1_gain(dst: &mut [f32], src: &[f32], c: &GateKnee) {
 }
 
 /// Compute gate curve: `dst[i] = gain(|src[i]|) * |src[i]|`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn gate_x1_curve(dst: &mut [f32], src: &[f32], c: &GateKnee) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         let x = s.abs();
@@ -127,6 +132,7 @@ pub fn gate_x1_curve(dst: &mut [f32], src: &[f32], c: &GateKnee) {
 ///
 /// Below threshold: reduced gain; above: expanded gain using Hermite
 /// interpolation or linear tilt in log domain.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn uexpander_x1_gain(dst: &mut [f32], src: &[f32], c: &ExpanderKnee) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         let x = s.abs();
@@ -151,6 +157,7 @@ pub fn uexpander_x1_gain(dst: &mut [f32], src: &[f32], c: &ExpanderKnee) {
 }
 
 /// Compute upward expander curve: `dst[i] = gain(|src[i]|) * |src[i]|`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn uexpander_x1_curve(dst: &mut [f32], src: &[f32], c: &ExpanderKnee) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         let x = s.abs();
@@ -177,6 +184,7 @@ pub fn uexpander_x1_curve(dst: &mut [f32], src: &[f32], c: &ExpanderKnee) {
 /// Below `threshold`: gain from linear expansion line (tilt in log domain),
 /// clamped to 0.0 at extreme low levels. Between `start` and `end`: Hermite
 /// interpolation (soft knee). Above `end`: unity gain.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn dexpander_x1_gain(dst: &mut [f32], src: &[f32], c: &ExpanderKnee) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         let x = s.abs();
@@ -195,6 +203,7 @@ pub fn dexpander_x1_gain(dst: &mut [f32], src: &[f32], c: &ExpanderKnee) {
 }
 
 /// Compute downward expander curve: `dst[i] = gain(|src[i]|) * |src[i]|`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn dexpander_x1_curve(dst: &mut [f32], src: &[f32], c: &ExpanderKnee) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         let x = s.abs();
@@ -218,6 +227,7 @@ pub fn dexpander_x1_curve(dst: &mut [f32], src: &[f32], c: &ExpanderKnee) {
 // Used by lsp-dsp-units where the envelope buffer is processed in-place.
 
 /// In-place dual-knee compressor gain: reads from `buf`, writes gain back to `buf`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn compressor_x2_gain_inplace(buf: &mut [f32], c: &CompressorX2) {
     for d in buf.iter_mut() {
         let x = d.abs();
@@ -245,6 +255,7 @@ pub fn compressor_x2_gain_inplace(buf: &mut [f32], c: &CompressorX2) {
 }
 
 /// In-place gate gain: reads from `buf`, writes gain back to `buf`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn gate_x1_gain_inplace(buf: &mut [f32], c: &GateKnee) {
     for d in buf.iter_mut() {
         let x = d.abs();
@@ -260,6 +271,7 @@ pub fn gate_x1_gain_inplace(buf: &mut [f32], c: &GateKnee) {
 }
 
 /// In-place upward expander gain: reads from `buf`, writes gain back to `buf`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn uexpander_x1_gain_inplace(buf: &mut [f32], c: &ExpanderKnee) {
     for d in buf.iter_mut() {
         let x = d.abs();
@@ -281,6 +293,7 @@ pub fn uexpander_x1_gain_inplace(buf: &mut [f32], c: &ExpanderKnee) {
 }
 
 /// In-place downward expander gain: reads from `buf`, writes gain back to `buf`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn dexpander_x1_gain_inplace(buf: &mut [f32], c: &ExpanderKnee) {
     for d in buf.iter_mut() {
         let x = d.abs();

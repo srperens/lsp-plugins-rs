@@ -3,7 +3,10 @@
 
 //! Scalar math operations on float buffers.
 
+use multiversion::multiversion;
+
 /// Multiply each element by a scalar: `dst[i] = dst[i] * k`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn scale(dst: &mut [f32], k: f32) {
     for s in dst.iter_mut() {
         *s *= k;
@@ -11,6 +14,7 @@ pub fn scale(dst: &mut [f32], k: f32) {
 }
 
 /// Multiply each element by a scalar into a new buffer: `dst[i] = src[i] * k`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn scale2(dst: &mut [f32], src: &[f32], k: f32) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         *d = *s * k;
@@ -18,6 +22,7 @@ pub fn scale2(dst: &mut [f32], src: &[f32], k: f32) {
 }
 
 /// Add a scalar to each element: `dst[i] = dst[i] + k`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn add_scalar(dst: &mut [f32], k: f32) {
     for s in dst.iter_mut() {
         *s += k;
@@ -25,6 +30,7 @@ pub fn add_scalar(dst: &mut [f32], k: f32) {
 }
 
 /// Multiply each element: `dst[i] = dst[i] * src[i]`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn mul(dst: &mut [f32], src: &[f32]) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         *d *= *s;
@@ -34,6 +40,7 @@ pub fn mul(dst: &mut [f32], src: &[f32]) {
 /// Divide each element: `dst[i] = dst[i] / src[i]`.
 ///
 /// Division by zero produces zero.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn div(dst: &mut [f32], src: &[f32]) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         *d = if *s != 0.0 { *d / *s } else { 0.0 };
@@ -43,6 +50,7 @@ pub fn div(dst: &mut [f32], src: &[f32]) {
 /// Square root of each element: `dst[i] = sqrt(src[i])`.
 ///
 /// Negative inputs produce zero.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn sqrt(dst: &mut [f32], src: &[f32]) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         *d = if *s >= 0.0 { s.sqrt() } else { 0.0 };
@@ -52,6 +60,7 @@ pub fn sqrt(dst: &mut [f32], src: &[f32]) {
 /// Natural logarithm: `dst[i] = ln(src[i])`.
 ///
 /// Non-positive inputs produce `-inf` (matching `f32::ln` behavior).
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn ln(dst: &mut [f32], src: &[f32]) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         *d = s.ln();
@@ -59,6 +68,7 @@ pub fn ln(dst: &mut [f32], src: &[f32]) {
 }
 
 /// Exponential: `dst[i] = exp(src[i])`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn exp(dst: &mut [f32], src: &[f32]) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         *d = s.exp();
@@ -66,6 +76,7 @@ pub fn exp(dst: &mut [f32], src: &[f32]) {
 }
 
 /// Power of each element: `dst[i] = src[i] ^ k`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn powf(dst: &mut [f32], src: &[f32], k: f32) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         *d = s.powf(k);
@@ -75,6 +86,7 @@ pub fn powf(dst: &mut [f32], src: &[f32], k: f32) {
 /// Linear to decibels: `dst[i] = 20 * log10(|src[i]|)`.
 ///
 /// Zero inputs produce `f32::NEG_INFINITY`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn lin_to_db(dst: &mut [f32], src: &[f32]) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         *d = 20.0 * s.abs().log10();
@@ -82,6 +94,7 @@ pub fn lin_to_db(dst: &mut [f32], src: &[f32]) {
 }
 
 /// Decibels to linear: `dst[i] = 10^(src[i] / 20)`.
+#[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn db_to_lin(dst: &mut [f32], src: &[f32]) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
         *d = 10.0_f32.powf(*s / 20.0);

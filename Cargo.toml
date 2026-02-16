@@ -22,3 +22,4 @@ rand = "0.9"
 rand_chacha = "0.9"
 bitflags = "2"
 criterion = { version = "0.5", features = ["html_reports"] }
+multiversion = "0.7"
