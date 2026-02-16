@@ -5,6 +5,9 @@
 //! Each benchmark group runs the same DSP operation through both the Rust
 //! implementation and the C++ reference, enabling side-by-side throughput
 //! comparison via `cargo bench`.
+//!
+//! When built with `--features upstream-bench`, a third "upstream" column
+//! appears using the hand-tuned SIMD from lsp-plugins/lsp-dsp-lib.
 
 use std::mem::ManuallyDrop;
 
@@ -64,7 +67,8 @@ union RefBiquadCoeffs {
     x8: ManuallyDrop<RefBiquadX8>,
 }
 
-#[repr(C)]
+// 64-byte alignment required by upstream SIMD (LSP_DSP_BIQUAD_ALIGN = 0x40).
+#[repr(C, align(64))]
 struct RefBiquad {
     d: [f32; 16],
     coeffs: RefBiquadCoeffs,
@@ -109,6 +113,61 @@ unsafe extern "C" {
     );
 
     fn native_correlation_coefficient(a: *const f32, b: *const f32, count: usize) -> f32;
+}
+
+// ─── Upstream FFI (hand-tuned SIMD from lsp-plugins/lsp-dsp-lib) ────────
+
+#[cfg(feature = "upstream-bench")]
+unsafe extern "C" {
+    fn upstream_biquad_process_x1(
+        dst: *mut f32,
+        src: *const f32,
+        count: usize,
+        f: *mut RefBiquad,
+    );
+    fn upstream_biquad_process_x8(
+        dst: *mut f32,
+        src: *const f32,
+        count: usize,
+        f: *mut RefBiquad,
+    );
+
+    fn upstream_scale(dst: *mut f32, k: f32, count: usize);
+    fn upstream_ln(dst: *mut f32, src: *const f32, count: usize);
+    fn upstream_exp(dst: *mut f32, src: *const f32, count: usize);
+
+    fn upstream_packed_add(dst: *mut f32, a: *const f32, b: *const f32, count: usize);
+    fn upstream_packed_mul(dst: *mut f32, a: *const f32, b: *const f32, count: usize);
+    fn upstream_packed_fma(
+        dst: *mut f32,
+        a: *const f32,
+        b: *const f32,
+        c: *const f32,
+        count: usize,
+    );
+
+    fn upstream_h_sum(src: *const f32, count: usize) -> f32;
+    fn upstream_h_abs_max(src: *const f32, count: usize) -> f32;
+
+    fn upstream_mix2(dst: *mut f32, src: *const f32, k1: f32, k2: f32, count: usize);
+
+    fn upstream_lr_to_ms(
+        mid: *mut f32,
+        side: *mut f32,
+        left: *const f32,
+        right: *const f32,
+        count: usize,
+    );
+
+    fn upstream_complex_mul(
+        dst_re: *mut f32,
+        dst_im: *mut f32,
+        a_re: *const f32,
+        a_im: *const f32,
+        b_re: *const f32,
+        b_im: *const f32,
+        count: usize,
+    );
 }
 
 // ─── Biquad filter coefficients ─────────────────────────────────────────
@@ -182,6 +241,34 @@ fn bench_biquad_x1(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("upstream", |b| {
+        let mut f = RefBiquad {
+            d: [0.0; 16],
+            coeffs: RefBiquadCoeffs {
+                x1: ManuallyDrop::new(RefBiquadX1 {
+                    b0,
+                    b1,
+                    b2,
+                    a1,
+                    a2,
+                    p0: 0.0,
+                    p1: 0.0,
+                    p2: 0.0,
+                }),
+            },
+            __pad: [0.0; 8],
+        };
+        b.iter(|| unsafe {
+            upstream_biquad_process_x1(
+                black_box(dst.as_mut_ptr()),
+                black_box(src.as_ptr()),
+                n,
+                &mut f,
+            );
+        });
+    });
+
     group.finish();
 }
 
@@ -232,6 +319,31 @@ fn bench_biquad_x8(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("upstream", |b| {
+        let mut f = RefBiquad {
+            d: [0.0; 16],
+            coeffs: RefBiquadCoeffs {
+                x8: ManuallyDrop::new(RefBiquadX8 {
+                    b0: [b0; 8],
+                    b1: [b1; 8],
+                    b2: [b2; 8],
+                    a1: [a1; 8],
+                    a2: [a2; 8],
+                }),
+            },
+            __pad: [0.0; 8],
+        };
+        b.iter(|| unsafe {
+            upstream_biquad_process_x8(
+                black_box(dst.as_mut_ptr()),
+                black_box(src.as_ptr()),
+                n,
+                &mut f,
+            );
+        });
+    });
+
     group.finish();
 }
 
@@ -258,6 +370,14 @@ fn bench_scalar_math(c: &mut Criterion) {
             unsafe { native_scale(black_box(buf.as_mut_ptr()), 2.5, n) };
         });
     });
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("scale/upstream", |b| {
+        let mut buf = src.clone();
+        b.iter(|| {
+            buf.copy_from_slice(&src);
+            unsafe { upstream_scale(black_box(buf.as_mut_ptr()), 2.5, n) };
+        });
+    });
 
     // ln
     group.bench_function("ln/rust", |b| {
@@ -268,6 +388,12 @@ fn bench_scalar_math(c: &mut Criterion) {
     group.bench_function("ln/cpp", |b| {
         b.iter(|| unsafe {
             native_ln(black_box(dst.as_mut_ptr()), black_box(pos_src.as_ptr()), n);
+        });
+    });
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("ln/upstream", |b| {
+        b.iter(|| unsafe {
+            upstream_ln(black_box(dst.as_mut_ptr()), black_box(pos_src.as_ptr()), n);
         });
     });
 
@@ -282,8 +408,14 @@ fn bench_scalar_math(c: &mut Criterion) {
             native_exp(black_box(dst.as_mut_ptr()), black_box(src.as_ptr()), n);
         });
     });
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("exp/upstream", |b| {
+        b.iter(|| unsafe {
+            upstream_exp(black_box(dst.as_mut_ptr()), black_box(src.as_ptr()), n);
+        });
+    });
 
-    // db_to_lin
+    // db_to_lin (no upstream equivalent)
     group.bench_function("db_to_lin/rust", |b| {
         b.iter(|| {
             lsp_dsp_lib::math::scalar::db_to_lin(black_box(&mut dst), black_box(&db_src));
@@ -322,6 +454,17 @@ fn bench_packed_math(c: &mut Criterion) {
             );
         });
     });
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("add/upstream", |b| {
+        b.iter(|| unsafe {
+            upstream_packed_add(
+                black_box(dst.as_mut_ptr()),
+                black_box(a.as_ptr()),
+                black_box(b_buf.as_ptr()),
+                n,
+            );
+        });
+    });
 
     // packed_mul
     group.bench_function("mul/rust", |b| {
@@ -332,6 +475,17 @@ fn bench_packed_math(c: &mut Criterion) {
     group.bench_function("mul/cpp", |b| {
         b.iter(|| unsafe {
             native_packed_mul(
+                black_box(dst.as_mut_ptr()),
+                black_box(a.as_ptr()),
+                black_box(b_buf.as_ptr()),
+                n,
+            );
+        });
+    });
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("mul/upstream", |b| {
+        b.iter(|| unsafe {
+            upstream_packed_mul(
                 black_box(dst.as_mut_ptr()),
                 black_box(a.as_ptr()),
                 black_box(b_buf.as_ptr()),
@@ -362,6 +516,18 @@ fn bench_packed_math(c: &mut Criterion) {
             );
         });
     });
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("fma/upstream", |b| {
+        b.iter(|| unsafe {
+            upstream_packed_fma(
+                black_box(dst.as_mut_ptr()),
+                black_box(a.as_ptr()),
+                black_box(b_buf.as_ptr()),
+                black_box(c_buf.as_ptr()),
+                n,
+            );
+        });
+    });
 
     group.finish();
 }
@@ -378,8 +544,12 @@ fn bench_horizontal(c: &mut Criterion) {
     group.bench_function("sum/cpp", |b| {
         b.iter(|| unsafe { native_h_sum(black_box(src.as_ptr()), n) });
     });
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("sum/upstream", |b| {
+        b.iter(|| unsafe { upstream_h_sum(black_box(src.as_ptr()), n) });
+    });
 
-    // h_rms
+    // h_rms (no upstream equivalent)
     group.bench_function("rms/rust", |b| {
         b.iter(|| lsp_dsp_lib::math::horizontal::rms(black_box(&src)));
     });
@@ -393,6 +563,10 @@ fn bench_horizontal(c: &mut Criterion) {
     });
     group.bench_function("abs_max/cpp", |b| {
         b.iter(|| unsafe { native_h_abs_max(black_box(src.as_ptr()), n) });
+    });
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("abs_max/upstream", |b| {
+        b.iter(|| unsafe { upstream_h_abs_max(black_box(src.as_ptr()), n) });
     });
 
     group.finish();
@@ -431,6 +605,24 @@ fn bench_mix2(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("upstream", |b| {
+        let orig = white_noise(n);
+        let mut dst = orig.clone();
+        b.iter(|| {
+            dst.copy_from_slice(&orig);
+            unsafe {
+                upstream_mix2(
+                    black_box(dst.as_mut_ptr()),
+                    black_box(src.as_ptr()),
+                    k1,
+                    k2,
+                    n,
+                );
+            }
+        });
+    });
+
     group.finish();
 }
 
@@ -456,6 +648,19 @@ fn bench_lr_to_ms(c: &mut Criterion) {
     group.bench_function("cpp", |b| {
         b.iter(|| unsafe {
             native_lr_to_ms(
+                black_box(mid.as_mut_ptr()),
+                black_box(side.as_mut_ptr()),
+                black_box(left.as_ptr()),
+                black_box(right.as_ptr()),
+                n,
+            );
+        });
+    });
+
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("upstream", |b| {
+        b.iter(|| unsafe {
+            upstream_lr_to_ms(
                 black_box(mid.as_mut_ptr()),
                 black_box(side.as_mut_ptr()),
                 black_box(left.as_ptr()),
@@ -505,6 +710,21 @@ fn bench_complex_mul(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("upstream", |b| {
+        b.iter(|| unsafe {
+            upstream_complex_mul(
+                black_box(dst_re.as_mut_ptr()),
+                black_box(dst_im.as_mut_ptr()),
+                black_box(a_re.as_ptr()),
+                black_box(a_im.as_ptr()),
+                black_box(b_re.as_ptr()),
+                black_box(b_im.as_ptr()),
+                n,
+            );
+        });
+    });
+
     group.finish();
 }
 
@@ -527,6 +747,8 @@ fn bench_correlation(c: &mut Criterion) {
             native_correlation_coefficient(black_box(src.as_ptr()), black_box(kernel.as_ptr()), n)
         });
     });
+
+    // No upstream equivalent for correlation (incompatible streaming API)
 
     group.finish();
 }
