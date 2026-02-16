@@ -18,8 +18,8 @@ realfft = "3.5"
 num-complex = "0.4"
 float-cmp = "0.10"
 hound = "3.5"
-rand = "0.9"
-rand_chacha = "0.9"
+rand = "0.10"
+rand_chacha = "0.10"
 bitflags = "2"
-criterion = { version = "0.5", features = ["html_reports"] }
-multiversion = "0.7"
+criterion = { version = "0.8", features = ["html_reports"] }
+multiversion = "0.8"
