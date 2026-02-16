@@ -10,6 +10,7 @@ use gstreamer::glib;
 use gstreamer::prelude::*;
 use gstreamer::subclass::prelude::*;
 use gstreamer_audio::subclass::prelude::*;
+use gstreamer_base::prelude::*;
 use lsp_dsp_units::dynamics::limiter::{Limiter, LimiterMode};
 
 use crate::base;
@@ -32,6 +33,7 @@ const PROP_LOOKAHEAD: &str = "lookahead";
 const PROP_ATTACK: &str = "attack";
 const PROP_RELEASE: &str = "release";
 const PROP_MODE: &str = "mode";
+const PROP_ENABLED: &str = "enabled";
 
 // ── State ──────────────────────────────────────────────────────────
 
@@ -81,6 +83,7 @@ struct LimiterParams {
     attack: f32,
     release: f32,
     mode: LimiterMode,
+    enabled: bool,
 }
 
 impl Default for LimiterParams {
@@ -91,6 +94,7 @@ impl Default for LimiterParams {
             attack: DEFAULT_ATTACK_MS,
             release: DEFAULT_RELEASE_MS,
             mode: LimiterMode::HermThin,
+            enabled: true,
         }
     }
 }
@@ -213,6 +217,12 @@ impl ObjectImpl for LspRsLimiter {
                     .default_value(DEFAULT_MODE)
                     .mutable_playing()
                     .build(),
+                glib::ParamSpecBoolean::builder(PROP_ENABLED)
+                    .nick("Enabled")
+                    .blurb("Enable processing (false = passthrough)")
+                    .default_value(true)
+                    .mutable_playing()
+                    .build(),
             ]
         });
         PROPERTIES.as_ref()
@@ -227,6 +237,10 @@ impl ObjectImpl for LspRsLimiter {
             PROP_RELEASE => inner.params.release = value.get().expect("type checked"),
             PROP_MODE => {
                 inner.params.mode = mode_from_i32(value.get().expect("type checked"));
+            }
+            PROP_ENABLED => {
+                inner.params.enabled = value.get().expect("type checked");
+                self.obj().set_passthrough(!inner.params.enabled);
             }
             _ => {}
         }
@@ -244,6 +258,7 @@ impl ObjectImpl for LspRsLimiter {
             PROP_ATTACK => inner.params.attack.to_value(),
             PROP_RELEASE => inner.params.release.to_value(),
             PROP_MODE => mode_to_i32(inner.params.mode).to_value(),
+            PROP_ENABLED => inner.params.enabled.to_value(),
             _ => unimplemented!(),
         }
     }
@@ -372,6 +387,9 @@ impl AudioFilterImpl for LspRsLimiter {
         })?;
 
         inner.state = Some(State::new(sample_rate, channels, &inner.params));
+        let enabled = inner.params.enabled;
+        drop(inner);
+        self.obj().set_passthrough(!enabled);
         Ok(())
     }
 }
@@ -470,6 +488,21 @@ mod tests {
         };
         state.update_params(&new_params);
         assert_eq!(state.limiters.len(), 1);
+    }
+
+    #[test]
+    fn enabled_default_is_true() {
+        let elem = make_limiter();
+        assert!(elem.property::<bool>("enabled"));
+    }
+
+    #[test]
+    fn enabled_set_get_roundtrip() {
+        let elem = make_limiter();
+        elem.set_property("enabled", false);
+        assert!(!elem.property::<bool>("enabled"));
+        elem.set_property("enabled", true);
+        assert!(elem.property::<bool>("enabled"));
     }
 
     #[test]

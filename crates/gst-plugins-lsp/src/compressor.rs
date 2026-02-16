@@ -11,6 +11,7 @@ use gstreamer::glib;
 use gstreamer::prelude::*;
 use gstreamer::subclass::prelude::*;
 use gstreamer_audio::subclass::prelude::*;
+use gstreamer_base::prelude::*;
 
 use lsp_dsp_units::dynamics::compressor::{Compressor, CompressorMode};
 
@@ -35,6 +36,7 @@ const PROP_RELEASE: &str = "release";
 const PROP_KNEE: &str = "knee";
 const PROP_MAKEUP_GAIN: &str = "makeup-gain";
 const PROP_MODE: &str = "mode";
+const PROP_ENABLED: &str = "enabled";
 
 // ── State ───────────────────────────────────────────────────────────
 
@@ -88,6 +90,7 @@ struct CompressorParams {
     knee: f32,
     makeup_gain: f32,
     mode: CompressorMode,
+    enabled: bool,
 }
 
 impl Default for CompressorParams {
@@ -100,6 +103,7 @@ impl Default for CompressorParams {
             knee: DEFAULT_KNEE,
             makeup_gain: DEFAULT_MAKEUP_GAIN,
             mode: CompressorMode::Downward,
+            enabled: true,
         }
     }
 }
@@ -214,6 +218,12 @@ impl ObjectImpl for LspRsCompressor {
                     .default_value(DEFAULT_MODE)
                     .mutable_playing()
                     .build(),
+                glib::ParamSpecBoolean::builder(PROP_ENABLED)
+                    .nick("Enabled")
+                    .blurb("Enable processing (false = passthrough)")
+                    .default_value(true)
+                    .mutable_playing()
+                    .build(),
             ]
         });
         PROPERTIES.as_ref()
@@ -230,6 +240,10 @@ impl ObjectImpl for LspRsCompressor {
             PROP_MAKEUP_GAIN => inner.params.makeup_gain = value.get().expect("type checked"),
             PROP_MODE => {
                 inner.params.mode = mode_from_i32(value.get().expect("type checked"));
+            }
+            PROP_ENABLED => {
+                inner.params.enabled = value.get().expect("type checked");
+                self.obj().set_passthrough(!inner.params.enabled);
             }
             _ => {}
         }
@@ -249,6 +263,7 @@ impl ObjectImpl for LspRsCompressor {
             PROP_KNEE => inner.params.knee.to_value(),
             PROP_MAKEUP_GAIN => inner.params.makeup_gain.to_value(),
             PROP_MODE => mode_to_i32(inner.params.mode).to_value(),
+            PROP_ENABLED => inner.params.enabled.to_value(),
             _ => unimplemented!(),
         }
     }
@@ -382,6 +397,9 @@ impl AudioFilterImpl for LspRsCompressor {
         })?;
 
         inner.state = Some(State::new(sample_rate, channels, &inner.params));
+        let enabled = inner.params.enabled;
+        drop(inner);
+        self.obj().set_passthrough(!enabled);
         Ok(())
     }
 }
@@ -472,6 +490,21 @@ mod tests {
         assert!((params.release - 100.0).abs() < f32::EPSILON);
         assert!((params.knee - 0.0625).abs() < f32::EPSILON);
         assert!((params.makeup_gain - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn enabled_default_is_true() {
+        let elem = make_compressor();
+        assert!(elem.property::<bool>("enabled"));
+    }
+
+    #[test]
+    fn enabled_set_get_roundtrip() {
+        let elem = make_compressor();
+        elem.set_property("enabled", false);
+        assert!(!elem.property::<bool>("enabled"));
+        elem.set_property("enabled", true);
+        assert!(elem.property::<bool>("enabled"));
     }
 
     #[test]

@@ -11,6 +11,7 @@ use gstreamer::glib;
 use gstreamer::prelude::*;
 use gstreamer::subclass::prelude::*;
 use gstreamer_audio::subclass::prelude::*;
+use gstreamer_base::prelude::*;
 
 use lsp_dsp_units::dynamics::gate::Gate;
 use lsp_dsp_units::units::db_to_gain;
@@ -40,6 +41,7 @@ const PROP_HOLD: &str = "hold";
 const PROP_KNEE: &str = "knee";
 const PROP_REDUCTION: &str = "reduction";
 const PROP_ZONE: &str = "zone";
+const PROP_ENABLED: &str = "enabled";
 
 // ── State ──────────────────────────────────────────────────────────
 
@@ -94,6 +96,7 @@ struct GateParams {
     knee: f32,
     reduction_db: f32,
     zone: f32,
+    enabled: bool,
 }
 
 impl Default for GateParams {
@@ -107,6 +110,7 @@ impl Default for GateParams {
             knee: DEFAULT_KNEE,
             reduction_db: DEFAULT_REDUCTION_DB,
             zone: DEFAULT_ZONE,
+            enabled: true,
         }
     }
 }
@@ -226,6 +230,12 @@ impl ObjectImpl for LspRsGate {
                     .default_value(DEFAULT_ZONE)
                     .mutable_playing()
                     .build(),
+                glib::ParamSpecBoolean::builder(PROP_ENABLED)
+                    .nick("Enabled")
+                    .blurb("Enable processing (false = passthrough)")
+                    .default_value(true)
+                    .mutable_playing()
+                    .build(),
             ]
         });
         PROPERTIES.as_ref()
@@ -246,6 +256,10 @@ impl ObjectImpl for LspRsGate {
             PROP_KNEE => inner.params.knee = value.get().expect("type checked"),
             PROP_REDUCTION => inner.params.reduction_db = value.get().expect("type checked"),
             PROP_ZONE => inner.params.zone = value.get().expect("type checked"),
+            PROP_ENABLED => {
+                inner.params.enabled = value.get().expect("type checked");
+                self.obj().set_passthrough(!inner.params.enabled);
+            }
             _ => {}
         }
         let params = inner.params.clone();
@@ -265,6 +279,7 @@ impl ObjectImpl for LspRsGate {
             PROP_KNEE => inner.params.knee.to_value(),
             PROP_REDUCTION => inner.params.reduction_db.to_value(),
             PROP_ZONE => inner.params.zone.to_value(),
+            PROP_ENABLED => inner.params.enabled.to_value(),
             _ => unimplemented!(),
         }
     }
@@ -395,6 +410,9 @@ impl AudioFilterImpl for LspRsGate {
         })?;
 
         inner.state = Some(State::new(sample_rate, channels, &inner.params));
+        let enabled = inner.params.enabled;
+        drop(inner);
+        self.obj().set_passthrough(!enabled);
         Ok(())
     }
 }
@@ -489,6 +507,21 @@ mod tests {
         };
         state.update_params(&new_params);
         assert_eq!(state.gates.len(), 1);
+    }
+
+    #[test]
+    fn enabled_default_is_true() {
+        let elem = make_gate();
+        assert!(elem.property::<bool>("enabled"));
+    }
+
+    #[test]
+    fn enabled_set_get_roundtrip() {
+        let elem = make_gate();
+        elem.set_property("enabled", false);
+        assert!(!elem.property::<bool>("enabled"));
+        elem.set_property("enabled", true);
+        assert!(elem.property::<bool>("enabled"));
     }
 
     #[test]
