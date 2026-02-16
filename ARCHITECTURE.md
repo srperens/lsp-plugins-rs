@@ -1,23 +1,20 @@
-# Architecture Plan: LSP DSP → Rust + GStreamer
+# Architecture: LSP DSP → Rust + GStreamer
 
 ## Overview
 
-Port lsp-dsp-lib and lsp-dsp-units from C++ to Rust, and expose as GStreamer plugins.
+Rust port of lsp-dsp-lib and lsp-dsp-units, exposed as GStreamer plugins.
 
 ```
 ┌─────────────────────────────────────────────────┐
 │           gst-plugins-lsp (cdylib)              │
-│  GStreamer audio filter elements in Rust         │
-│  (compressor, eq, limiter, gate, ...)           │
+│  GStreamer audio processing elements            │
 ├─────────────────────────────────────────────────┤
-│           lsp-dsp-units (lib)                    │
-│  High-level DSP components                       │
-│  Compressor, Limiter, Gate, Equalizer,           │
-│  Filter, Delay, Convolver, Analyzer, ...        │
+│           lsp-dsp-units (lib)                   │
+│  High-level DSP: compressor, EQ, limiter, ...   │
 ├─────────────────────────────────────────────────┤
-│           lsp-dsp-lib (lib)                      │
-│  Low-level DSP primitives                        │
-│  FFT, biquad, copy, mix, dynamics, resampling   │
+│           lsp-dsp-lib (lib)                     │
+│  Low-level primitives: FFT, biquad, dynamics    │
+│  Runtime SIMD dispatch via multiversion         │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -45,10 +42,15 @@ lsp-dsp-rs/
 ├── crates/
 │   ├── lsp-dsp-lib/              # Crate 1: Low-level primitives
 │   │   ├── Cargo.toml
+│   │   ├── build.rs              # Compiles C++ reference (generic + native)
+│   │   ├── benches/
+│   │   │   ├── ab_perf.rs        # A/B perf: Rust vs C++ ref (vs upstream)
+│   │   │   ├── biquad_bench.rs   # Biquad micro-benchmarks
+│   │   │   └── fft_bench.rs      # FFT micro-benchmarks
 │   │   └── src/
 │   │       ├── lib.rs
 │   │       ├── types.rs          # biquad_t, compressor_knee_t, DspContext (FTZ/DAZ)
-│   │       ├── # context.rs — merged into types.rs as DspContext
+│   │       ├── simd.rs           # SIMD target definitions for multiversion
 │   │       ├── copy.rs           # copy, move, fill, reverse
 │   │       ├── mix.rs            # mix2/3/4, mix_copy, mix_add
 │   │       ├── pan.rs            # panning
@@ -62,7 +64,6 @@ lsp-dsp-rs/
 │   │       ├── resampling.rs     # Resampling with Lanczos
 │   │       ├── float.rs          # Float sanitization, limits
 │   │       ├── complex.rs        # Complex arithmetic
-│   │       ├── interpolation.rs  # Interpolation functions
 │   │       ├── search.rs         # Min/max search
 │   │       └── math/
 │   │           ├── mod.rs
@@ -156,29 +157,15 @@ lsp-dsp-rs/
 │           │   └── imp.rs        # GstLspGate element
 │           └── ...               # More plugin elements
 │
-├── tests/                        # Integration/A-B tests
-│   ├── common/
-│   │   ├── mod.rs
-│   │   ├── reference.rs          # C++ reference bindings via cc
-│   │   ├── test_signals.rs       # Generate test signals
-│   │   └── comparison.rs         # Float comparison utilities
-│   ├── ab_filters.rs             # A/B: Rust vs C++ biquad
-│   ├── ab_dynamics.rs            # A/B: Rust vs C++ compressor/gate
-│   ├── ab_fft.rs                 # A/B: Rust vs C++ FFT
-│   └── golden/                   # Golden reference WAV files
-│       ├── README.md
-│       └── ...
-│
 ├── cpp_ref/                      # C++ reference code for A/B tests
-│   ├── CMakeLists.txt            # Builds lsp-dsp-lib/units as static lib
-│   ├── build.rs                  # Included by workspace build.rs
-│   ├── bindings.h                # extern "C" wrapper functions
-│   └── bindings.cpp              # Calls original lsp-dsp-lib
+│   ├── bindings.h                # extern "C" wrapper declarations
+│   ├── bindings.cpp              # Generic build: -O2 -ffp-contract=off (for correctness tests)
+│   ├── bindings_native.cpp       # Native build: -O3 -march=native (for perf benchmarks)
+│   └── upstream_wrapper.cpp      # Thin wrapper around upstream lsp::dsp::* (for 3-way benchmarks)
 │
-├── benches/                      # Benchmarks
-│   ├── fft_bench.rs
-│   ├── biquad_bench.rs
-│   └── dynamics_bench.rs
+├── third_party/                  # Git submodules (upstream C++ libraries)
+│   ├── lsp-dsp-lib/              # lsp-plugins/lsp-dsp-lib (tag 1.0.33) — hand-tuned SIMD
+│   └── lsp-common-lib/           # lsp-plugins/lsp-common-lib (tag 1.0.38) — common dependency
 │
 └── .claude/                      # Agent configuration
     ├── settings.json
@@ -195,16 +182,25 @@ lsp-dsp-rs/
 
 ### lsp-dsp-lib
 ```toml
+[features]
+upstream-bench = []          # Enable 3-way benchmarks with upstream SIMD library
+
 [dependencies]
 rustfft = "6.4"              # FFT (replaces lsp-dsp-lib's own FFT)
 realfft = "3.5"              # Real-valued FFT optimization
 num-complex = "0.4"          # Complex arithmetic (re-export from rustfft)
 thiserror = "2"              # Error types
+multiversion = "0.7"         # Runtime SIMD dispatch (AVX2/FMA, AVX, SSE4.1, NEON)
+
+[build-dependencies]
+cc = "1"                     # Compiles C++ reference + optional upstream library
 
 [dev-dependencies]
 float-cmp = "0.10"           # Float comparison in tests
 hound = "3.5"                # WAV I/O for test vectors
-rand = "0.8"                 # Deterministic noise generation
+rand = "0.9"                 # Deterministic noise generation
+rand_chacha = "0.9"          # ChaCha PRNG for reproducible tests
+criterion = "0.5"            # Benchmarking framework
 ```
 
 ### lsp-dsp-units
@@ -295,7 +291,7 @@ pub trait DspProcessor {
 }
 ```
 
-## Test Strategy (A/B bit-exact)
+## Test Strategy (A/B comparison)
 
 ### Level 1: Unit tests (per function)
 - Test each ported function with known input/output
@@ -303,20 +299,18 @@ pub trait DspProcessor {
 - Tolerance: ULP ≤ 4 for f32 (IEEE 754 margin)
 
 ### Level 2: C++ reference comparison (per module)
-- Compile original lsp-dsp-lib with `cc` crate
+- Compile original C++ reference with `cc` crate (generic build: `-O2 -ffp-contract=off` for deterministic rounding)
 - Run the same input through C++ and Rust
 - Compare output with `float_cmp::approx_eq!(f32, a, b, ulps = 4)`
 - Test signals: impulse, sine sweep, white noise (seeded PRNG)
 
-### Level 3: Golden reference (WAV files)
-- Process known WAV files through the C++ original
-- Save output as golden reference
-- Run the same WAV through Rust, compare
-- Calculate SNR between outputs — require > 120 dB
+### Level 3: Performance benchmarks (A/B and three-way)
+- **Two-column** (default): Rust vs C++ reference (native-optimized: `-O3 -march=native`)
+- **Three-column** (`--features upstream-bench`): adds upstream hand-tuned SIMD from `third_party/`
+- The dual C++ builds ensure correctness tests use deterministic math while benchmarks use full optimizations
 
 ### Level 4: GStreamer pipeline test
 - Build GStreamer pipeline with Rust plugin
-- Compare output with C++ lsp-plugins GStreamer wrapper
 - End-to-end verification
 
 ### Float precision rules
@@ -326,37 +320,15 @@ pub trait DspProcessor {
 - Ensure FMA behavior is consistent (`-C target-feature=-fma` if needed)
 - Handle denormals: flush-to-zero in both implementations
 
-## Porting Order (phase 1 → 3)
+## SIMD Strategy
 
-### Phase 1: lsp-dsp-lib primitives (generic impl)
-1. `types.rs` — Data structures
-2. `copy.rs`, `float.rs` — Basic buffer operations
-3. `math/` — Scalar, packed, horizontal math
-4. `complex.rs` — Complex arithmetic
-5. `fft.rs` — Wrapper around rustfft
-6. `filters.rs` — Biquad x1/x2/x4/x8
-7. `dynamics.rs` — Compressor/gate/expander curves
-8. `mix.rs`, `pan.rs`, `msmatrix.rs` — Mixing/panning
-9. `convolution.rs`, `fastconv.rs` — Convolution
-10. `resampling.rs` — Lanczos resampling
-11. `correlation.rs`, `interpolation.rs`, `search.rs`
+Runtime SIMD dispatch via the `multiversion` crate. Functions decorated with `#[multiversion(targets(...))]` get compiled for multiple ISA levels; at runtime the best available version is selected.
 
-### Phase 2: lsp-dsp-units components
-1. `filters/` — Filter, FilterBank, Equalizer
-2. `dynamics/` — Compressor, Limiter, Gate, Expander
-3. `util/` — Delay, Convolver, Crossover, Oversampler, Sidechain
-4. `meters/` — LUFS, TruePeak, Peak, Correlometer
-5. `noise/` — Generator, LCG, MLS, Velvet
-6. `ctl/` — Bypass, Counter
-7. `misc/` — Windows, Envelope, LFO, Fade
-8. `sampling/` — Sample, SamplePlayer
+Target tiers defined in `simd.rs`:
+- **x86_64**: AVX2+FMA, AVX, SSE4.1, baseline
+- **aarch64**: NEON (baseline on Apple Silicon)
 
-### Phase 3: GStreamer plugins
-1. Compressor element
-2. Equalizer element
-3. Limiter element
-4. Gate element
-5. More elements as needed
+The `upstream-bench` Cargo feature enables three-way benchmarks by linking against the original hand-tuned SIMD assembly from the upstream lsp-dsp-lib (via git submodules in `third_party/`). The build script (`build.rs`) compiles each upstream SIMD tier with the appropriate compiler flags (e.g., `-mavx2`, `-msse4.1`).
 
 ## License
 

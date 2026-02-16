@@ -4,6 +4,11 @@
 **Flags:** `RUSTFLAGS="-C target-cpu=native"`, C++ compiled with `-O3 -march=native`
 **Platform:** macOS (Darwin), Apple Silicon
 
+Three implementations compared:
+- **Rust** — our port, with runtime SIMD dispatch via `multiversion` (NEON on aarch64)
+- **C++ ref** — compiler auto-vectorized reference (`-O3 -march=native`)
+- **Upstream** — original lsp-plugins/lsp-dsp-lib hand-tuned NEON/ASIMD assembly
+
 ## Realtime Budget Reference
 
 At 48 kHz with 1024-sample blocks: **21.3 ms** per block.
@@ -19,12 +24,12 @@ At 48 kHz with 1024-sample blocks: **21.3 ms** per block.
 | x4 | 294 ns | 1.17 µs | 4.65 µs | 18.60 µs | 4.54 |
 | x8 | 892 ns | 3.55 µs | 14.20 µs | 56.79 µs | 13.87 |
 
-**Rust vs C++ (ab_perf, 1024 samples):**
+**Three-way comparison (ab_perf, 1024 samples):**
 
-| Benchmark | Rust | C++ | Ratio |
-|-----------|------|-----|-------|
-| biquad_x1 | 4.17 µs | 4.82 µs | **Rust 1.16x faster** |
-| biquad_x8 | 14.18 µs | 8.92 µs | **C++ 1.59x faster** |
+| Benchmark | Rust | C++ ref | Upstream | Best |
+|-----------|------|---------|----------|------|
+| biquad_x1 | 4.16 µs | 4.81 µs | 4.81 µs | **Rust 1.16x faster** |
+| biquad_x8 | 14.14 µs | 8.93 µs | 14.69 µs | **C++ ref 1.59x faster** |
 
 ### FFT (lsp-dsp-lib, via rustfft)
 
@@ -39,36 +44,37 @@ At 48 kHz with 1024-sample blocks: **21.3 ms** per block.
 
 ### Scalar Math (lsp-dsp-lib, 1024 samples)
 
-| Operation | Rust | C++ | Ratio |
-|-----------|------|-----|-------|
-| scale | 422 ns | 422 ns | parity |
-| ln | 8.40 µs | 8.42 µs | parity |
-| exp | 6.49 µs | 6.50 µs | parity |
-| db_to_lin | 6.85 µs | 6.52 µs | C++ 1.05x faster |
+| Operation | Rust | C++ ref | Upstream | Best |
+|-----------|------|---------|----------|------|
+| scale | 420 ns | 422 ns | 424 ns | parity |
+| ln | 8.43 µs | 8.43 µs | 8.44 µs | parity |
+| exp | 6.51 µs | 6.52 µs | 6.53 µs | parity |
+| db_to_lin | 6.87 µs | 6.53 µs | — | C++ 1.05x faster |
 
 ### Packed Math (lsp-dsp-lib, 1024 samples)
 
-| Operation | Rust | C++ | Ratio |
-|-----------|------|-----|-------|
-| add | 254 ns | 253 ns | parity |
-| mul | 255 ns | 253 ns | parity |
-| fma | 360 ns | 359 ns | parity |
+| Operation | Rust | C++ ref | Upstream | Best |
+|-----------|------|---------|----------|------|
+| add | 254 ns | 253 ns | 254 ns | parity |
+| mul | 255 ns | 254 ns | 254 ns | parity |
+| fma | 360 ns | 359 ns | 359 ns | parity |
 
 ### Horizontal Reductions (lsp-dsp-lib, 1024 samples)
 
-| Operation | Rust | C++ | Ratio |
-|-----------|------|-----|-------|
-| sum | 3.74 µs | 3.74 µs | parity |
-| rms | 3.75 µs | 3.74 µs | parity |
-| abs_max | 392 ns | 5.10 µs | **Rust 13x faster** |
+| Operation | Rust | C++ ref | Upstream | Best |
+|-----------|------|---------|----------|------|
+| sum | 3.73 µs | 3.73 µs | 3.73 µs | parity |
+| rms | 3.73 µs | 3.74 µs | — | parity |
+| abs_max | 394 ns | 5.09 µs | 5.11 µs | **Rust 13x faster** |
 
 ### Other DSP (lsp-dsp-lib, 1024 samples)
 
-| Operation | Rust | C++ | Ratio |
-|-----------|------|-----|-------|
-| lr_to_ms | 118 ns | 118 ns | parity |
-| complex_mul | 161 ns | 160 ns | parity |
-| correlation | 220 ns | 217 ns | parity |
+| Operation | Rust | C++ ref | Upstream | Best |
+|-----------|------|---------|----------|------|
+| mix2 | 119 ns | 118 ns | 118 ns | parity |
+| lr_to_ms | 119 ns | 119 ns | 121 ns | parity |
+| complex_mul | 159 ns | 160 ns | 162 ns | parity |
+| correlation | 221 ns | 217 ns | — | parity |
 
 ### Dynamics (lsp-dsp-units, 1024 samples)
 
@@ -134,9 +140,9 @@ because its `process()` method calls `process_sample()` in a loop. Compressor an
 
 - **FFT** — rustfft uses internal SIMD; ~8 ns/sample is excellent.
 - **Filters (lowpass, EQ, Butterworth)** — Rust is 2.0–4.6x faster than C++ reference. Auto-vectorization works very well.
-- **Packed math (add, mul, fma)** — at parity, already vectorized.
-- **Horizontal reductions** — at parity or dramatically faster (abs_max 13x).
-- **Scalar math, LR/MS, complex ops** — at parity.
+- **Packed math (add, mul, fma)** — at parity with both C++ ref and upstream hand-tuned SIMD.
+- **Horizontal reductions** — at parity or dramatically faster (abs_max: Rust 13x faster than both C++ ref and upstream).
+- **Scalar math, mix, LR/MS, complex ops** — at parity across all three implementations.
 - **LUFS meter, peak meter** — at parity or faster.
 - **Convolver** — FFT-dominated, already fast enough.
 
@@ -159,4 +165,8 @@ because its `process()` method calls `process_sample()` in a loop. Compressor an
 
 ### Conclusion
 
-**biquad x8** (1.59x gap) is the only remaining high-priority target, but has a serial dependency chain that limits optimization approaches. **True peak** (1.39x) is a secondary target. **Gate** was resolved with a 59% speedup by replacing bulk array calls with inline scalar functions — Rust is now 1.60x faster than C++. Filters, EQ, FFT, and math operations are already faster than C++ thanks to effective auto-vectorization.
+The three-way comparison confirms that the Rust port matches or exceeds the upstream hand-tuned SIMD assembly on nearly all low-level primitives. On Apple Silicon (aarch64/NEON), LLVM auto-vectorization produces code competitive with hand-written NEON intrinsics for most operations.
+
+**biquad x8** (C++ ref 1.59x faster) is the only remaining high-priority target. Notably, both Rust and upstream hand-tuned SIMD are equally slow here — the C++ reference compiler (`-O3 -march=native`) generates better instruction scheduling for the 8-way interleaved biquad. This suggests the issue is LLVM vs Clang codegen, not missing SIMD intrinsics. **True peak** (1.39x) is a secondary target. **Gate** was resolved with a 59% speedup by replacing bulk array calls with inline scalar functions — Rust is now 1.60x faster than C++. Filters, EQ, FFT, and math operations are already faster than C++ thanks to effective auto-vectorization.
+
+Operations with no upstream equivalent (db_to_lin, rms, correlation) are benchmarked Rust vs C++ ref only.
