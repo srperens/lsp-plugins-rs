@@ -1,0 +1,22 @@
+[package]
+name = "gst-plugins-lsp"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "GStreamer audio processing plugins using LSP DSP"
+
+[dependencies]
+gstreamer = "0.23"
+gstreamer-base = "0.23"
+gstreamer-audio = "0.23"
+once_cell = "1"
+lsp-dsp-lib = { path = "../lsp-dsp-lib" }
+lsp-dsp-units = { path = "../lsp-dsp-units" }
+
+[lib]
+name = "gstlspdsprs"
+crate-type = ["cdylib", "rlib"]
+
+[build-dependencies]
+gstreamer-base = "0.23"

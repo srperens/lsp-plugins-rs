@@ -1,0 +1,42 @@
+[package]
+name = "lsp-dsp-units"
+version = "0.1.0"
+description = "High-level DSP processing components — Rust port of lsp-plugins/lsp-dsp-units"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+lsp-dsp-lib = { path = "../lsp-dsp-lib" }
+thiserror = { workspace = true }
+bitflags = { workspace = true }
+
+[build-dependencies]
+cc = "1"
+
+[dev-dependencies]
+float-cmp = { workspace = true }
+hound = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "dynamics_bench"
+harness = false
+
+[[bench]]
+name = "filter_bench"
+harness = false
+
+[[bench]]
+name = "convolver_bench"
+harness = false
+
+[[bench]]
+name = "meter_bench"
+harness = false
+
+[[bench]]
+name = "oversampler_bench"
+harness = false

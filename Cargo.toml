@@ -1,0 +1,24 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/lsp-dsp-lib",
+    "crates/lsp-dsp-units",
+    "crates/gst-plugins-lsp",
+]
+
+[workspace.package]
+edition = "2024"
+license = "LGPL-3.0-or-later"
+repository = "https://github.com/per/lsp-dsp-rs"
+
+[workspace.dependencies]
+thiserror = "2"
+rustfft = "6.4"
+realfft = "3.5"
+num-complex = "0.4"
+float-cmp = "0.10"
+hound = "3.5"
+rand = "0.9"
+rand_chacha = "0.9"
+bitflags = "2"
+criterion = { version = "0.5", features = ["html_reports"] }
