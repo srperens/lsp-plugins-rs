@@ -9,9 +9,8 @@ fn main() {
         .file("../../cpp_ref/bindings.cpp")
         .include("../../cpp_ref")
         .flag_if_supported("-std=c++11")
-        .flag_if_supported("-O2")
-        .flag_if_supported("-fno-fast-math") // Critical: match IEEE 754 exactly
-        .flag_if_supported("-ffp-contract=off") // Disable FMA contraction
+        .flag_if_supported("-O3")
+        .flag_if_supported("-march=native")
         .warnings(false)
         .compile("lsp_dsp_units_ref");
 }
