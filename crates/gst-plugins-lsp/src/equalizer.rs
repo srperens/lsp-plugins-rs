@@ -355,11 +355,11 @@ impl ObjectImpl for LspRsEqualizer {
                 PROP_Q_SUFFIX => band.q.to_value(),
                 PROP_TYPE_SUFFIX => filter_type_to_i32(band.filter_type).to_value(),
                 PROP_ENABLED_SUFFIX => band.enabled.to_value(),
-                _ => unimplemented!(),
+                _ => panic!("unknown property {}", name),
             };
         }
 
-        unimplemented!()
+        panic!("unknown property {}", name)
     }
 }
 

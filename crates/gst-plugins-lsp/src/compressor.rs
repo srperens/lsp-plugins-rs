@@ -264,7 +264,7 @@ impl ObjectImpl for LspRsCompressor {
             PROP_MAKEUP_GAIN => inner.params.makeup_gain.to_value(),
             PROP_MODE => mode_to_i32(inner.params.mode).to_value(),
             PROP_ENABLED => inner.params.enabled.to_value(),
-            _ => unimplemented!(),
+            _ => panic!("unknown property {}", pspec.name()),
         }
     }
 }

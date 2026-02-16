@@ -71,7 +71,7 @@ impl EqBand {
 /// Parametric equalizer with N independently configurable bands.
 ///
 /// Each band wraps a biquad filter in the underlying [`FilterBank`].
-/// Disabled bands are set to [`FilterType::Off`] (identity passthrough).
+/// Disabled bands are set to `FilterType::Off` (identity passthrough).
 ///
 /// # Examples
 ///
@@ -100,7 +100,7 @@ pub struct Equalizer {
 impl Equalizer {
     /// Create a new equalizer with `n_bands` bands.
     ///
-    /// All bands default to [`FilterType::Off`] and enabled.
+    /// All bands default to `FilterType::Off` and enabled.
     pub fn new(n_bands: usize) -> Self {
         Self {
             bank: FilterBank::new(n_bands),

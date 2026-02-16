@@ -6,7 +6,7 @@
 //! [lsp-plugins/lsp-dsp-lib](https://github.com/lsp-plugins/lsp-dsp-lib).
 //!
 //! This crate provides the foundational DSP operations used by
-//! [`lsp-dsp-units`] to build complete audio processors. It includes:
+//! `lsp-dsp-units` to build complete audio processors. It includes:
 //!
 //! - **Buffer operations**: copy, fill, reverse
 //! - **Math**: scalar, packed (element-wise), and horizontal (reduction) ops

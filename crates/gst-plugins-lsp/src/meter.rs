@@ -182,7 +182,7 @@ impl ObjectImpl for LspRsMeter {
             PROP_LUFS_MOMENTARY => clamp_reading(inner.readings.lufs_momentary, 0.0).to_value(),
             PROP_LUFS_SHORT_TERM => clamp_reading(inner.readings.lufs_short_term, 0.0).to_value(),
             PROP_LUFS_INTEGRATED => clamp_reading(inner.readings.lufs_integrated, 0.0).to_value(),
-            _ => unimplemented!(),
+            _ => panic!("unknown property {}", pspec.name()),
         }
     }
 }

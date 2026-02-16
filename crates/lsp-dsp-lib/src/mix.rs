@@ -108,7 +108,7 @@ pub fn mix4(
     }
 }
 
-/// Copy-mix four sources into `dst`.
+/// Copy-mix four sources into `dst`: `dst[i] = src1[i]*k1 + src2[i]*k2 + src3[i]*k3 + src4[i]*k4`.
 #[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn mix_copy4(
     dst: &mut [f32],
@@ -132,7 +132,7 @@ pub fn mix_copy4(
     }
 }
 
-/// Add-mix four sources into `dst`.
+/// Add-mix four sources into `dst`: `dst[i] += src1[i]*k1 + src2[i]*k2 + src3[i]*k3 + src4[i]*k4`.
 #[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn mix_add4(
     dst: &mut [f32],

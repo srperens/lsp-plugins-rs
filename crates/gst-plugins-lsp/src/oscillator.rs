@@ -217,7 +217,7 @@ impl ObjectImpl for LspRsOscillator {
             PROP_WAVEFORM => waveform_to_i32(inner.params.waveform()).to_value(),
             PROP_DUTY_CYCLE => inner.params.duty_cycle.to_value(),
             PROP_SAMPLES_PER_BUFFER => inner.params.samples_per_buffer.to_value(),
-            _ => unimplemented!(),
+            _ => panic!("unknown property {}", pspec.name()),
         }
     }
 }

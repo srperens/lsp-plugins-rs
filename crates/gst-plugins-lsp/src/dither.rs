@@ -118,7 +118,7 @@ impl ObjectImpl for LspRsDither {
         let inner = self.inner.lock().expect("mutex poisoned");
         match pspec.name() {
             PROP_BITS => inner.bits.to_value(),
-            _ => unimplemented!(),
+            _ => panic!("unknown property {}", pspec.name()),
         }
     }
 }

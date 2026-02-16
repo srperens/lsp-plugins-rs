@@ -320,7 +320,12 @@ unsafe extern "C" {
     // Filters
     fn native_filter_init(state: *mut RefFilterState, sample_rate: f32);
     fn native_filter_update(state: *mut RefFilterState);
-    fn native_filter_process(state: *mut RefFilterState, dst: *mut f32, src: *const f32, count: usize);
+    fn native_filter_process(
+        state: *mut RefFilterState,
+        dst: *mut f32,
+        src: *const f32,
+        count: usize,
+    );
 
     fn native_butterworth_init(state: *mut RefButterworthState, sample_rate: f32);
     fn native_butterworth_update(state: *mut RefButterworthState);

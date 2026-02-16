@@ -234,7 +234,7 @@ impl ObjectImpl for LspRsCrossover {
             PROP_FREQ2 => inner.params.freq2.to_value(),
             PROP_FREQ3 => inner.params.freq3.to_value(),
             PROP_TOPOLOGY => topology_to_i32(inner.params.topology).to_value(),
-            _ => unimplemented!(),
+            _ => panic!("unknown property {}", pspec.name()),
         }
     }
 }

@@ -176,7 +176,7 @@ impl ObjectImpl for LspRsNoise {
             PROP_AMPLITUDE => inner.params.amplitude.to_value(),
             PROP_GENERATOR_TYPE => generator_type_to_i32(inner.params.generator_type()).to_value(),
             PROP_SAMPLES_PER_BUFFER => inner.params.samples_per_buffer.to_value(),
-            _ => unimplemented!(),
+            _ => panic!("unknown property {}", pspec.name()),
         }
     }
 }

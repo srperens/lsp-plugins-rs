@@ -119,18 +119,8 @@ unsafe extern "C" {
 
 #[cfg(feature = "upstream-bench")]
 unsafe extern "C" {
-    fn upstream_biquad_process_x1(
-        dst: *mut f32,
-        src: *const f32,
-        count: usize,
-        f: *mut RefBiquad,
-    );
-    fn upstream_biquad_process_x8(
-        dst: *mut f32,
-        src: *const f32,
-        count: usize,
-        f: *mut RefBiquad,
-    );
+    fn upstream_biquad_process_x1(dst: *mut f32, src: *const f32, count: usize, f: *mut RefBiquad);
+    fn upstream_biquad_process_x8(dst: *mut f32, src: *const f32, count: usize, f: *mut RefBiquad);
 
     fn upstream_scale(dst: *mut f32, k: f32, count: usize);
     fn upstream_ln(dst: *mut f32, src: *const f32, count: usize);

@@ -250,7 +250,7 @@ impl ObjectImpl for LspRsExpander {
             PROP_HOLD => inner.params.hold.to_value(),
             PROP_KNEE => inner.params.knee.to_value(),
             PROP_MODE => mode_to_i32(inner.params.mode).to_value(),
-            _ => unimplemented!(),
+            _ => panic!("unknown property {}", pspec.name()),
         }
     }
 }

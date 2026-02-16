@@ -280,7 +280,7 @@ impl ObjectImpl for LspRsGate {
             PROP_REDUCTION => inner.params.reduction_db.to_value(),
             PROP_ZONE => inner.params.zone.to_value(),
             PROP_ENABLED => inner.params.enabled.to_value(),
-            _ => unimplemented!(),
+            _ => panic!("unknown property {}", pspec.name()),
         }
     }
 }

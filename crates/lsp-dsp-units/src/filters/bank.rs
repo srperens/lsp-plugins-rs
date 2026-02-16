@@ -47,7 +47,7 @@ pub struct FilterBank {
 impl FilterBank {
     /// Create a new filter bank with `n_filters` filters.
     ///
-    /// All filters default to [`FilterType::Off`].
+    /// All filters default to `FilterType::Off`.
     pub fn new(n_filters: usize) -> Self {
         let filters: Vec<Filter> = (0..n_filters).map(|_| Filter::new()).collect();
         let biquads = build_packed_biquads(n_filters);

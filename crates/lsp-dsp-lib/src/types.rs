@@ -17,9 +17,11 @@ pub const BIQUAD_D_ITEMS: usize = 16;
 /// Coefficients for a single biquad filter section.
 ///
 /// Implements the difference equation:
+/// ```text
 ///   y[n] = b0*x[n] + d0
 ///   d0   = b1*x[n] - a1*y[n] + d1
 ///   d1   = b2*x[n] - a2*y[n]
+/// ```
 #[derive(Debug, Clone, Copy, Default)]
 #[repr(C)]
 pub struct BiquadX1 {
