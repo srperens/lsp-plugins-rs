@@ -287,9 +287,9 @@ struct RefCorrelometer {
 
 unsafe extern "C" {
     // Dynamics
-    fn ref_compressor_init(state: *mut RefCompressorState, sample_rate: f32);
-    fn ref_compressor_update(state: *mut RefCompressorState);
-    fn ref_compressor_process(
+    fn native_compressor_init(state: *mut RefCompressorState, sample_rate: f32);
+    fn native_compressor_update(state: *mut RefCompressorState);
+    fn native_compressor_process(
         state: *mut RefCompressorState,
         gain_out: *mut f32,
         env_out: *mut f32,
@@ -297,9 +297,9 @@ unsafe extern "C" {
         count: usize,
     );
 
-    fn ref_gate_init(state: *mut RefGateState, sample_rate: f32);
-    fn ref_gate_update(state: *mut RefGateState);
-    fn ref_gate_process(
+    fn native_gate_init(state: *mut RefGateState, sample_rate: f32);
+    fn native_gate_update(state: *mut RefGateState);
+    fn native_gate_process(
         state: *mut RefGateState,
         gain_out: *mut f32,
         env_out: *mut f32,
@@ -307,9 +307,9 @@ unsafe extern "C" {
         count: usize,
     );
 
-    fn ref_expander_init(state: *mut RefExpanderState, sample_rate: f32);
-    fn ref_expander_update(state: *mut RefExpanderState);
-    fn ref_expander_process(
+    fn native_expander_init(state: *mut RefExpanderState, sample_rate: f32);
+    fn native_expander_update(state: *mut RefExpanderState);
+    fn native_expander_process(
         state: *mut RefExpanderState,
         gain_out: *mut f32,
         env_out: *mut f32,
@@ -318,22 +318,22 @@ unsafe extern "C" {
     );
 
     // Filters
-    fn ref_filter_init(state: *mut RefFilterState, sample_rate: f32);
-    fn ref_filter_update(state: *mut RefFilterState);
-    fn ref_filter_process(state: *mut RefFilterState, dst: *mut f32, src: *const f32, count: usize);
+    fn native_filter_init(state: *mut RefFilterState, sample_rate: f32);
+    fn native_filter_update(state: *mut RefFilterState);
+    fn native_filter_process(state: *mut RefFilterState, dst: *mut f32, src: *const f32, count: usize);
 
-    fn ref_butterworth_init(state: *mut RefButterworthState, sample_rate: f32);
-    fn ref_butterworth_update(state: *mut RefButterworthState);
-    fn ref_butterworth_process(
+    fn native_butterworth_init(state: *mut RefButterworthState, sample_rate: f32);
+    fn native_butterworth_update(state: *mut RefButterworthState);
+    fn native_butterworth_process(
         state: *mut RefButterworthState,
         dst: *mut f32,
         src: *const f32,
         count: usize,
     );
 
-    fn ref_equalizer_init(state: *mut RefEqualizerState, sample_rate: f32, n_bands: i32);
-    fn ref_equalizer_update(state: *mut RefEqualizerState);
-    fn ref_equalizer_process(
+    fn native_equalizer_init(state: *mut RefEqualizerState, sample_rate: f32, n_bands: i32);
+    fn native_equalizer_update(state: *mut RefEqualizerState);
+    fn native_equalizer_process(
         state: *mut RefEqualizerState,
         dst: *mut f32,
         src: *const f32,
@@ -341,23 +341,23 @@ unsafe extern "C" {
     );
 
     // Meters
-    fn ref_peak_meter_init(m: *mut RefPeakMeter);
-    fn ref_peak_meter_update(m: *mut RefPeakMeter);
-    fn ref_peak_meter_process(m: *mut RefPeakMeter, input: *const f32, count: usize);
+    fn native_peak_meter_init(m: *mut RefPeakMeter);
+    fn native_peak_meter_update(m: *mut RefPeakMeter);
+    fn native_peak_meter_process(m: *mut RefPeakMeter, input: *const f32, count: usize);
 
-    fn ref_true_peak_meter_init(m: *mut RefTruePeakMeter);
-    fn ref_true_peak_meter_process(m: *mut RefTruePeakMeter, input: *const f32, count: usize);
+    fn native_true_peak_meter_init(m: *mut RefTruePeakMeter);
+    fn native_true_peak_meter_process(m: *mut RefTruePeakMeter, input: *const f32, count: usize);
 
-    fn ref_lufs_meter_init(m: *mut RefLufsMeter, sample_rate: f32, channels: usize);
-    fn ref_lufs_meter_process(
+    fn native_lufs_meter_init(m: *mut RefLufsMeter, sample_rate: f32, channels: usize);
+    fn native_lufs_meter_process(
         m: *mut RefLufsMeter,
         input: *const *const f32,
         num_ch: usize,
         num_samples: usize,
     );
-    fn ref_correlometer_init(m: *mut RefCorrelometer);
-    fn ref_correlometer_update(m: *mut RefCorrelometer);
-    fn ref_correlometer_process(
+    fn native_correlometer_init(m: *mut RefCorrelometer);
+    fn native_correlometer_update(m: *mut RefCorrelometer);
+    fn native_correlometer_process(
         m: *mut RefCorrelometer,
         left: *const f32,
         right: *const f32,
@@ -393,19 +393,19 @@ fn bench_compressor(c: &mut Criterion) {
     group.bench_function("cpp", |b| {
         let mut state = unsafe {
             let mut s: RefCompressorState = std::mem::zeroed();
-            ref_compressor_init(&mut s, SAMPLE_RATE);
+            native_compressor_init(&mut s, SAMPLE_RATE);
             s.mode = 0; // Downward
             s.attack_thresh = 0.5;
             s.ratio = 4.0;
             s.knee = 0.1;
             s.attack = 10.0;
             s.release = 100.0;
-            ref_compressor_update(&mut s);
+            native_compressor_update(&mut s);
             s
         };
         let mut env = vec![0.0f32; BUF_SIZE];
         b.iter(|| unsafe {
-            ref_compressor_process(
+            native_compressor_process(
                 &mut state,
                 black_box(gain.as_mut_ptr()),
                 env.as_mut_ptr(),
@@ -441,18 +441,18 @@ fn bench_gate(c: &mut Criterion) {
     group.bench_function("cpp", |b| {
         let mut state = unsafe {
             let mut s: RefGateState = std::mem::zeroed();
-            ref_gate_init(&mut s, SAMPLE_RATE);
+            native_gate_init(&mut s, SAMPLE_RATE);
             s.threshold = 0.1;
             s.zone = 2.0;
             s.reduction = 0.01;
             s.attack = 5.0;
             s.release = 50.0;
-            ref_gate_update(&mut s);
+            native_gate_update(&mut s);
             s
         };
         let mut env = vec![0.0f32; BUF_SIZE];
         b.iter(|| unsafe {
-            ref_gate_process(
+            native_gate_process(
                 &mut state,
                 black_box(gain.as_mut_ptr()),
                 env.as_mut_ptr(),
@@ -489,19 +489,19 @@ fn bench_expander(c: &mut Criterion) {
     group.bench_function("cpp", |b| {
         let mut state = unsafe {
             let mut s: RefExpanderState = std::mem::zeroed();
-            ref_expander_init(&mut s, SAMPLE_RATE);
+            native_expander_init(&mut s, SAMPLE_RATE);
             s.mode = 0; // Downward
             s.attack_thresh = 0.1;
             s.ratio = 2.0;
             s.knee = 0.1;
             s.attack = 10.0;
             s.release = 100.0;
-            ref_expander_update(&mut s);
+            native_expander_update(&mut s);
             s
         };
         let mut env = vec![0.0f32; BUF_SIZE];
         b.iter(|| unsafe {
-            ref_expander_process(
+            native_expander_process(
                 &mut state,
                 black_box(gain.as_mut_ptr()),
                 env.as_mut_ptr(),
@@ -536,16 +536,16 @@ fn bench_filter_lowpass(c: &mut Criterion) {
     group.bench_function("cpp", |b| {
         let mut state = unsafe {
             let mut s: RefFilterState = std::mem::zeroed();
-            ref_filter_init(&mut s, SAMPLE_RATE);
+            native_filter_init(&mut s, SAMPLE_RATE);
             s.filter_type = RefFilterType::Lowpass;
             s.frequency = 1000.0;
             s.q = std::f32::consts::FRAC_1_SQRT_2;
             s.gain = 0.0;
-            ref_filter_update(&mut s);
+            native_filter_update(&mut s);
             s
         };
         b.iter(|| unsafe {
-            ref_filter_process(
+            native_filter_process(
                 &mut state,
                 black_box(output.as_mut_ptr()),
                 black_box(input.as_ptr()),
@@ -578,15 +578,15 @@ fn bench_butterworth_lp8(c: &mut Criterion) {
     group.bench_function("cpp", |b| {
         let mut state = unsafe {
             let mut s: RefButterworthState = std::mem::zeroed();
-            ref_butterworth_init(&mut s, SAMPLE_RATE);
+            native_butterworth_init(&mut s, SAMPLE_RATE);
             s.filter_type = RefButterworthType::Lowpass;
             s.cutoff = 1000.0;
             s.order = 8;
-            ref_butterworth_update(&mut s);
+            native_butterworth_update(&mut s);
             s
         };
         b.iter(|| unsafe {
-            ref_butterworth_process(
+            native_butterworth_process(
                 &mut state,
                 black_box(output.as_mut_ptr()),
                 black_box(input.as_ptr()),
@@ -615,7 +615,7 @@ fn bench_equalizer_8band(c: &mut Criterion) {
         FilterType::Peaking,
         FilterType::HighShelf,
     ];
-    let ref_types = [
+    let native_types = [
         RefFilterType::LowShelf,
         RefFilterType::Peaking,
         RefFilterType::Peaking,
@@ -647,19 +647,19 @@ fn bench_equalizer_8band(c: &mut Criterion) {
     group.bench_function("cpp", |b| {
         let mut state = unsafe {
             let mut s: RefEqualizerState = std::mem::zeroed();
-            ref_equalizer_init(&mut s, SAMPLE_RATE, 8);
+            native_equalizer_init(&mut s, SAMPLE_RATE, 8);
             for i in 0..8 {
-                s.bands[i].filter_type = ref_types[i];
+                s.bands[i].filter_type = native_types[i];
                 s.bands[i].frequency = freqs[i];
                 s.bands[i].q = std::f32::consts::FRAC_1_SQRT_2;
                 s.bands[i].gain = gains[i];
                 s.bands[i].enabled = 1;
             }
-            ref_equalizer_update(&mut s);
+            native_equalizer_update(&mut s);
             s
         };
         b.iter(|| unsafe {
-            ref_equalizer_process(
+            native_equalizer_process(
                 &mut state,
                 black_box(output.as_mut_ptr()),
                 black_box(input.as_ptr()),
@@ -691,15 +691,15 @@ fn bench_peak_meter(c: &mut Criterion) {
     group.bench_function("cpp", |b| {
         let mut m = unsafe {
             let mut m: RefPeakMeter = std::mem::zeroed();
-            ref_peak_meter_init(&mut m);
+            native_peak_meter_init(&mut m);
             m.sample_rate = SAMPLE_RATE;
             m.hold_ms = 500.0;
             m.decay_db_per_sec = 20.0;
-            ref_peak_meter_update(&mut m);
+            native_peak_meter_update(&mut m);
             m
         };
         b.iter(|| unsafe {
-            ref_peak_meter_process(&mut m, black_box(input.as_ptr()), BUF_SIZE);
+            native_peak_meter_process(&mut m, black_box(input.as_ptr()), BUF_SIZE);
         });
     });
 
@@ -720,11 +720,11 @@ fn bench_true_peak_meter(c: &mut Criterion) {
     group.bench_function("cpp", |b| {
         let mut m = unsafe {
             let mut m: RefTruePeakMeter = std::mem::zeroed();
-            ref_true_peak_meter_init(&mut m);
+            native_true_peak_meter_init(&mut m);
             m
         };
         b.iter(|| unsafe {
-            ref_true_peak_meter_process(&mut m, black_box(input.as_ptr()), BUF_SIZE);
+            native_true_peak_meter_process(&mut m, black_box(input.as_ptr()), BUF_SIZE);
         });
     });
 
@@ -746,12 +746,12 @@ fn bench_lufs_meter(c: &mut Criterion) {
     group.bench_function("cpp", |b| {
         let mut m = unsafe {
             let mut m: RefLufsMeter = std::mem::zeroed();
-            ref_lufs_meter_init(&mut m, SAMPLE_RATE, 2);
+            native_lufs_meter_init(&mut m, SAMPLE_RATE, 2);
             m
         };
         b.iter(|| unsafe {
             let ptrs = [left.as_ptr(), right.as_ptr()];
-            ref_lufs_meter_process(&mut m, black_box(ptrs.as_ptr()), 2, BUF_SIZE);
+            native_lufs_meter_process(&mut m, black_box(ptrs.as_ptr()), 2, BUF_SIZE);
         });
     });
 
@@ -778,14 +778,14 @@ fn bench_correlometer(c: &mut Criterion) {
     group.bench_function("cpp", |b| {
         let mut m = unsafe {
             let mut m: RefCorrelometer = std::mem::zeroed();
-            ref_correlometer_init(&mut m);
+            native_correlometer_init(&mut m);
             m.sample_rate = SAMPLE_RATE;
             m.window_ms = 300.0;
-            ref_correlometer_update(&mut m);
+            native_correlometer_update(&mut m);
             m
         };
         b.iter(|| unsafe {
-            ref_correlometer_process(
+            native_correlometer_process(
                 &mut m,
                 black_box(left.as_ptr()),
                 black_box(right.as_ptr()),

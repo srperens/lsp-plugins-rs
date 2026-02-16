@@ -72,25 +72,25 @@ struct RefBiquad {
 }
 
 unsafe extern "C" {
-    fn ref_biquad_process_x1(dst: *mut f32, src: *const f32, count: usize, f: *mut RefBiquad);
-    fn ref_biquad_process_x8(dst: *mut f32, src: *const f32, count: usize, f: *mut RefBiquad);
+    fn native_biquad_process_x1(dst: *mut f32, src: *const f32, count: usize, f: *mut RefBiquad);
+    fn native_biquad_process_x8(dst: *mut f32, src: *const f32, count: usize, f: *mut RefBiquad);
 
-    fn ref_scale(dst: *mut f32, k: f32, count: usize);
-    fn ref_ln(dst: *mut f32, src: *const f32, count: usize);
-    fn ref_exp(dst: *mut f32, src: *const f32, count: usize);
-    fn ref_db_to_lin(dst: *mut f32, src: *const f32, count: usize);
+    fn native_scale(dst: *mut f32, k: f32, count: usize);
+    fn native_ln(dst: *mut f32, src: *const f32, count: usize);
+    fn native_exp(dst: *mut f32, src: *const f32, count: usize);
+    fn native_db_to_lin(dst: *mut f32, src: *const f32, count: usize);
 
-    fn ref_packed_add(dst: *mut f32, a: *const f32, b: *const f32, count: usize);
-    fn ref_packed_mul(dst: *mut f32, a: *const f32, b: *const f32, count: usize);
-    fn ref_packed_fma(dst: *mut f32, a: *const f32, b: *const f32, c: *const f32, count: usize);
+    fn native_packed_add(dst: *mut f32, a: *const f32, b: *const f32, count: usize);
+    fn native_packed_mul(dst: *mut f32, a: *const f32, b: *const f32, count: usize);
+    fn native_packed_fma(dst: *mut f32, a: *const f32, b: *const f32, c: *const f32, count: usize);
 
-    fn ref_h_sum(src: *const f32, count: usize) -> f32;
-    fn ref_h_rms(src: *const f32, count: usize) -> f32;
-    fn ref_h_abs_max(src: *const f32, count: usize) -> f32;
+    fn native_h_sum(src: *const f32, count: usize) -> f32;
+    fn native_h_rms(src: *const f32, count: usize) -> f32;
+    fn native_h_abs_max(src: *const f32, count: usize) -> f32;
 
-    fn ref_mix2(dst: *mut f32, src: *const f32, k1: f32, k2: f32, count: usize);
+    fn native_mix2(dst: *mut f32, src: *const f32, k1: f32, k2: f32, count: usize);
 
-    fn ref_lr_to_ms(
+    fn native_lr_to_ms(
         mid: *mut f32,
         side: *mut f32,
         left: *const f32,
@@ -98,7 +98,7 @@ unsafe extern "C" {
         count: usize,
     );
 
-    fn ref_complex_mul(
+    fn native_complex_mul(
         dst_re: *mut f32,
         dst_im: *mut f32,
         a_re: *const f32,
@@ -108,7 +108,7 @@ unsafe extern "C" {
         count: usize,
     );
 
-    fn ref_correlation_coefficient(a: *const f32, b: *const f32, count: usize) -> f32;
+    fn native_correlation_coefficient(a: *const f32, b: *const f32, count: usize) -> f32;
 }
 
 // ─── Biquad filter coefficients ─────────────────────────────────────────
@@ -173,7 +173,7 @@ fn bench_biquad_x1(c: &mut Criterion) {
             __pad: [0.0; 8],
         };
         b.iter(|| unsafe {
-            ref_biquad_process_x1(
+            native_biquad_process_x1(
                 black_box(dst.as_mut_ptr()),
                 black_box(src.as_ptr()),
                 n,
@@ -223,7 +223,7 @@ fn bench_biquad_x8(c: &mut Criterion) {
             __pad: [0.0; 8],
         };
         b.iter(|| unsafe {
-            ref_biquad_process_x8(
+            native_biquad_process_x8(
                 black_box(dst.as_mut_ptr()),
                 black_box(src.as_ptr()),
                 n,
@@ -255,7 +255,7 @@ fn bench_scalar_math(c: &mut Criterion) {
         let mut buf = src.clone();
         b.iter(|| {
             buf.copy_from_slice(&src);
-            unsafe { ref_scale(black_box(buf.as_mut_ptr()), 2.5, n) };
+            unsafe { native_scale(black_box(buf.as_mut_ptr()), 2.5, n) };
         });
     });
 
@@ -267,7 +267,7 @@ fn bench_scalar_math(c: &mut Criterion) {
     });
     group.bench_function("ln/cpp", |b| {
         b.iter(|| unsafe {
-            ref_ln(black_box(dst.as_mut_ptr()), black_box(pos_src.as_ptr()), n);
+            native_ln(black_box(dst.as_mut_ptr()), black_box(pos_src.as_ptr()), n);
         });
     });
 
@@ -279,7 +279,7 @@ fn bench_scalar_math(c: &mut Criterion) {
     });
     group.bench_function("exp/cpp", |b| {
         b.iter(|| unsafe {
-            ref_exp(black_box(dst.as_mut_ptr()), black_box(src.as_ptr()), n);
+            native_exp(black_box(dst.as_mut_ptr()), black_box(src.as_ptr()), n);
         });
     });
 
@@ -291,7 +291,7 @@ fn bench_scalar_math(c: &mut Criterion) {
     });
     group.bench_function("db_to_lin/cpp", |b| {
         b.iter(|| unsafe {
-            ref_db_to_lin(black_box(dst.as_mut_ptr()), black_box(db_src.as_ptr()), n);
+            native_db_to_lin(black_box(dst.as_mut_ptr()), black_box(db_src.as_ptr()), n);
         });
     });
 
@@ -314,7 +314,7 @@ fn bench_packed_math(c: &mut Criterion) {
     });
     group.bench_function("add/cpp", |b| {
         b.iter(|| unsafe {
-            ref_packed_add(
+            native_packed_add(
                 black_box(dst.as_mut_ptr()),
                 black_box(a.as_ptr()),
                 black_box(b_buf.as_ptr()),
@@ -331,7 +331,7 @@ fn bench_packed_math(c: &mut Criterion) {
     });
     group.bench_function("mul/cpp", |b| {
         b.iter(|| unsafe {
-            ref_packed_mul(
+            native_packed_mul(
                 black_box(dst.as_mut_ptr()),
                 black_box(a.as_ptr()),
                 black_box(b_buf.as_ptr()),
@@ -353,7 +353,7 @@ fn bench_packed_math(c: &mut Criterion) {
     });
     group.bench_function("fma/cpp", |b| {
         b.iter(|| unsafe {
-            ref_packed_fma(
+            native_packed_fma(
                 black_box(dst.as_mut_ptr()),
                 black_box(a.as_ptr()),
                 black_box(b_buf.as_ptr()),
@@ -376,7 +376,7 @@ fn bench_horizontal(c: &mut Criterion) {
         b.iter(|| lsp_dsp_lib::math::horizontal::sum(black_box(&src)));
     });
     group.bench_function("sum/cpp", |b| {
-        b.iter(|| unsafe { ref_h_sum(black_box(src.as_ptr()), n) });
+        b.iter(|| unsafe { native_h_sum(black_box(src.as_ptr()), n) });
     });
 
     // h_rms
@@ -384,7 +384,7 @@ fn bench_horizontal(c: &mut Criterion) {
         b.iter(|| lsp_dsp_lib::math::horizontal::rms(black_box(&src)));
     });
     group.bench_function("rms/cpp", |b| {
-        b.iter(|| unsafe { ref_h_rms(black_box(src.as_ptr()), n) });
+        b.iter(|| unsafe { native_h_rms(black_box(src.as_ptr()), n) });
     });
 
     // h_abs_max
@@ -392,7 +392,7 @@ fn bench_horizontal(c: &mut Criterion) {
         b.iter(|| lsp_dsp_lib::math::horizontal::abs_max(black_box(&src)));
     });
     group.bench_function("abs_max/cpp", |b| {
-        b.iter(|| unsafe { ref_h_abs_max(black_box(src.as_ptr()), n) });
+        b.iter(|| unsafe { native_h_abs_max(black_box(src.as_ptr()), n) });
     });
 
     group.finish();
@@ -420,7 +420,7 @@ fn bench_mix2(c: &mut Criterion) {
         b.iter(|| {
             dst.copy_from_slice(&orig);
             unsafe {
-                ref_mix2(
+                native_mix2(
                     black_box(dst.as_mut_ptr()),
                     black_box(src.as_ptr()),
                     k1,
@@ -455,7 +455,7 @@ fn bench_lr_to_ms(c: &mut Criterion) {
 
     group.bench_function("cpp", |b| {
         b.iter(|| unsafe {
-            ref_lr_to_ms(
+            native_lr_to_ms(
                 black_box(mid.as_mut_ptr()),
                 black_box(side.as_mut_ptr()),
                 black_box(left.as_ptr()),
@@ -493,7 +493,7 @@ fn bench_complex_mul(c: &mut Criterion) {
 
     group.bench_function("cpp", |b| {
         b.iter(|| unsafe {
-            ref_complex_mul(
+            native_complex_mul(
                 black_box(dst_re.as_mut_ptr()),
                 black_box(dst_im.as_mut_ptr()),
                 black_box(a_re.as_ptr()),
@@ -524,7 +524,7 @@ fn bench_correlation(c: &mut Criterion) {
     group.bench_function("cpp", |b| {
         let n = src_len.min(kernel_len);
         b.iter(|| unsafe {
-            ref_correlation_coefficient(black_box(src.as_ptr()), black_box(kernel.as_ptr()), n)
+            native_correlation_coefficient(black_box(src.as_ptr()), black_box(kernel.as_ptr()), n)
         });
     });
 
