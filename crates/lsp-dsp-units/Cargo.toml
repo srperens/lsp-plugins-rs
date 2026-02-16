@@ -1,6 +1,6 @@
 [package]
 name = "lsp-dsp-units"
-version = "1.1.0"
+version = "1.2.0"
 description = "High-level DSP processing components — Rust port of lsp-plugins/lsp-dsp-units"
 edition.workspace = true
 license.workspace = true

@@ -33,7 +33,7 @@ Rust port of lsp-dsp-lib and lsp-dsp-units, exposed as GStreamer plugins.
 ## Workspace Structure
 
 ```
-lsp-dsp-rs/
+lsp-plugins-rs/
 ├── Cargo.toml                    # Workspace root
 ├── COPYING.LESSER                # LGPL-3.0
 ├── ARCHITECTURE.md               # This file
@@ -183,45 +183,51 @@ lsp-dsp-rs/
 ### lsp-dsp-lib
 ```toml
 [features]
-upstream-bench = []          # Enable 3-way benchmarks with upstream SIMD library
+cpp-ref = ["dep:cc"]         # Enable C++ reference for A/B tests
+upstream-bench = ["cpp-ref"] # Enable 3-way benchmarks with upstream SIMD library
 
 [dependencies]
-rustfft = "6.4"              # FFT (replaces lsp-dsp-lib's own FFT)
-realfft = "3.5"              # Real-valued FFT optimization
-num-complex = "0.4"          # Complex arithmetic (re-export from rustfft)
-thiserror = "2"              # Error types
-multiversion = "0.7"         # Runtime SIMD dispatch (AVX2/FMA, AVX, SSE4.1, NEON)
+rustfft = { workspace = true }       # FFT (replaces lsp-dsp-lib's own FFT)
+realfft = { workspace = true }       # Real-valued FFT optimization
+num-complex = { workspace = true }   # Complex arithmetic (re-export from rustfft)
+thiserror = { workspace = true }     # Error types
+multiversion = { workspace = true }  # Runtime SIMD dispatch (AVX2/FMA, AVX, SSE4.1, NEON)
 
 [build-dependencies]
-cc = "1"                     # Compiles C++ reference + optional upstream library
+cc = { version = "1", optional = true }  # Compiles C++ reference + optional upstream library
 
 [dev-dependencies]
-float-cmp = "0.10"           # Float comparison in tests
-hound = "3.5"                # WAV I/O for test vectors
-rand = "0.9"                 # Deterministic noise generation
-rand_chacha = "0.9"          # ChaCha PRNG for reproducible tests
-criterion = "0.5"            # Benchmarking framework
+float-cmp = { workspace = true }    # Float comparison in tests
+hound = { workspace = true }        # WAV I/O for test vectors
+rand = { workspace = true }         # Deterministic noise generation
+rand_chacha = { workspace = true }  # ChaCha PRNG for reproducible tests
+criterion = { workspace = true }    # Benchmarking framework
 ```
 
 ### lsp-dsp-units
 ```toml
 [dependencies]
 lsp-dsp-lib = { path = "../lsp-dsp-lib" }
-thiserror = "2"
+thiserror = { workspace = true }
+bitflags = { workspace = true }
 
 [dev-dependencies]
-float-cmp = "0.10"
-hound = "3.5"
+float-cmp = { workspace = true }
+hound = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+criterion = { workspace = true }
 ```
 
 ### gst-plugins-lsp
 ```toml
 [dependencies]
+lsp-dsp-lib = { path = "../lsp-dsp-lib" }
 lsp-dsp-units = { path = "../lsp-dsp-units" }
-gst = { package = "gstreamer", version = "0.24" }
-gst-base = { package = "gstreamer-base", version = "0.24" }
-gst-audio = { package = "gstreamer-audio", version = "0.24" }
-glib = "0.21"
+gstreamer = { workspace = true }
+gstreamer-base = { workspace = true }
+gstreamer-audio = { workspace = true }
+once_cell = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
