@@ -5,6 +5,12 @@
 // native-optimized (-O3 -march=native) for performance benchmarks.
 
 fn main() {
+    #[cfg(feature = "cpp-ref")]
+    build_cpp_ref();
+}
+
+#[cfg(feature = "cpp-ref")]
+fn build_cpp_ref() {
     // Generic build — for correctness tests (no FMA, deterministic rounding)
     cc::Build::new()
         .cpp(true)

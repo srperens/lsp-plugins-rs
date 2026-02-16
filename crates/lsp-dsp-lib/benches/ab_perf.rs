@@ -75,6 +75,7 @@ struct RefBiquad {
     __pad: [f32; 8],
 }
 
+#[cfg(feature = "cpp-ref")]
 unsafe extern "C" {
     fn native_biquad_process_x1(dst: *mut f32, src: *const f32, count: usize, f: *mut RefBiquad);
     fn native_biquad_process_x8(dst: *mut f32, src: *const f32, count: usize, f: *mut RefBiquad);
@@ -204,6 +205,7 @@ fn bench_biquad_x1(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         let mut f = RefBiquad {
             d: [0.0; 16],
@@ -285,6 +287,7 @@ fn bench_biquad_x8(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         let mut f = RefBiquad {
             d: [0.0; 16],
@@ -353,6 +356,7 @@ fn bench_scalar_math(c: &mut Criterion) {
             lsp_dsp_lib::math::scalar::scale(black_box(&mut buf), 2.5);
         });
     });
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("scale/cpp", |b| {
         let mut buf = src.clone();
         b.iter(|| {
@@ -375,6 +379,7 @@ fn bench_scalar_math(c: &mut Criterion) {
             lsp_dsp_lib::math::scalar::ln(black_box(&mut dst), black_box(&pos_src));
         });
     });
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("ln/cpp", |b| {
         b.iter(|| unsafe {
             native_ln(black_box(dst.as_mut_ptr()), black_box(pos_src.as_ptr()), n);
@@ -393,6 +398,7 @@ fn bench_scalar_math(c: &mut Criterion) {
             lsp_dsp_lib::math::scalar::exp(black_box(&mut dst), black_box(&src));
         });
     });
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("exp/cpp", |b| {
         b.iter(|| unsafe {
             native_exp(black_box(dst.as_mut_ptr()), black_box(src.as_ptr()), n);
@@ -411,6 +417,7 @@ fn bench_scalar_math(c: &mut Criterion) {
             lsp_dsp_lib::math::scalar::db_to_lin(black_box(&mut dst), black_box(&db_src));
         });
     });
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("db_to_lin/cpp", |b| {
         b.iter(|| unsafe {
             native_db_to_lin(black_box(dst.as_mut_ptr()), black_box(db_src.as_ptr()), n);
@@ -434,6 +441,7 @@ fn bench_packed_math(c: &mut Criterion) {
             lsp_dsp_lib::math::packed::add(black_box(&mut dst), black_box(&a), black_box(&b_buf));
         });
     });
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("add/cpp", |b| {
         b.iter(|| unsafe {
             native_packed_add(
@@ -462,6 +470,7 @@ fn bench_packed_math(c: &mut Criterion) {
             lsp_dsp_lib::math::packed::mul(black_box(&mut dst), black_box(&a), black_box(&b_buf));
         });
     });
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("mul/cpp", |b| {
         b.iter(|| unsafe {
             native_packed_mul(
@@ -495,6 +504,7 @@ fn bench_packed_math(c: &mut Criterion) {
             );
         });
     });
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("fma/cpp", |b| {
         b.iter(|| unsafe {
             native_packed_fma(
@@ -531,6 +541,7 @@ fn bench_horizontal(c: &mut Criterion) {
     group.bench_function("sum/rust", |b| {
         b.iter(|| lsp_dsp_lib::math::horizontal::sum(black_box(&src)));
     });
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("sum/cpp", |b| {
         b.iter(|| unsafe { native_h_sum(black_box(src.as_ptr()), n) });
     });
@@ -543,6 +554,7 @@ fn bench_horizontal(c: &mut Criterion) {
     group.bench_function("rms/rust", |b| {
         b.iter(|| lsp_dsp_lib::math::horizontal::rms(black_box(&src)));
     });
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("rms/cpp", |b| {
         b.iter(|| unsafe { native_h_rms(black_box(src.as_ptr()), n) });
     });
@@ -551,6 +563,7 @@ fn bench_horizontal(c: &mut Criterion) {
     group.bench_function("abs_max/rust", |b| {
         b.iter(|| lsp_dsp_lib::math::horizontal::abs_max(black_box(&src)));
     });
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("abs_max/cpp", |b| {
         b.iter(|| unsafe { native_h_abs_max(black_box(src.as_ptr()), n) });
     });
@@ -578,6 +591,7 @@ fn bench_mix2(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         let orig = white_noise(n);
         let mut dst = orig.clone();
@@ -635,6 +649,7 @@ fn bench_lr_to_ms(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         b.iter(|| unsafe {
             native_lr_to_ms(
@@ -686,6 +701,7 @@ fn bench_complex_mul(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         b.iter(|| unsafe {
             native_complex_mul(
@@ -731,6 +747,7 @@ fn bench_correlation(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         let n = src_len.min(kernel_len);
         b.iter(|| unsafe {

@@ -8,7 +8,8 @@ repository.workspace = true
 
 [features]
 default = []
-upstream-bench = []
+cpp-ref = ["dep:cc"]
+upstream-bench = ["cpp-ref"]
 
 [dependencies]
 rustfft = { workspace = true }
@@ -18,7 +19,7 @@ thiserror = { workspace = true }
 multiversion = { workspace = true }
 
 [build-dependencies]
-cc = "1"
+cc = { version = "1", optional = true }
 
 [dev-dependencies]
 float-cmp = { workspace = true }

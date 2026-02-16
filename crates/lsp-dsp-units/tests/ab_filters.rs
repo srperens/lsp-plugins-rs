@@ -1,3 +1,4 @@
+#![cfg(feature = "cpp-ref")]
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
 // A/B reference tests: compare Rust filter processors (Filter, Butterworth,

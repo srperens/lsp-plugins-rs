@@ -285,6 +285,7 @@ struct RefCorrelometer {
 
 // ─── FFI function declarations ──────────────────────────────────────────
 
+#[cfg(feature = "cpp-ref")]
 unsafe extern "C" {
     // Dynamics
     fn native_compressor_init(state: *mut RefCompressorState, sample_rate: f32);
@@ -395,6 +396,7 @@ fn bench_compressor(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         let mut state = unsafe {
             let mut s: RefCompressorState = std::mem::zeroed();
@@ -443,6 +445,7 @@ fn bench_gate(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         let mut state = unsafe {
             let mut s: RefGateState = std::mem::zeroed();
@@ -491,6 +494,7 @@ fn bench_expander(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         let mut state = unsafe {
             let mut s: RefExpanderState = std::mem::zeroed();
@@ -538,6 +542,7 @@ fn bench_filter_lowpass(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         let mut state = unsafe {
             let mut s: RefFilterState = std::mem::zeroed();
@@ -580,6 +585,7 @@ fn bench_butterworth_lp8(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         let mut state = unsafe {
             let mut s: RefButterworthState = std::mem::zeroed();
@@ -649,6 +655,7 @@ fn bench_equalizer_8band(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         let mut state = unsafe {
             let mut s: RefEqualizerState = std::mem::zeroed();
@@ -693,6 +700,7 @@ fn bench_peak_meter(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         let mut m = unsafe {
             let mut m: RefPeakMeter = std::mem::zeroed();
@@ -722,6 +730,7 @@ fn bench_true_peak_meter(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         let mut m = unsafe {
             let mut m: RefTruePeakMeter = std::mem::zeroed();
@@ -748,6 +757,7 @@ fn bench_lufs_meter(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         let mut m = unsafe {
             let mut m: RefLufsMeter = std::mem::zeroed();
@@ -780,6 +790,7 @@ fn bench_correlometer(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "cpp-ref")]
     group.bench_function("cpp", |b| {
         let mut m = unsafe {
             let mut m: RefCorrelometer = std::mem::zeroed();

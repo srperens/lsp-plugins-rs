@@ -11,8 +11,12 @@ lsp-dsp-lib = { path = "../lsp-dsp-lib" }
 thiserror = { workspace = true }
 bitflags = { workspace = true }
 
+[features]
+default = []
+cpp-ref = ["dep:cc"]
+
 [build-dependencies]
-cc = "1"
+cc = { version = "1", optional = true }
 
 [dev-dependencies]
 float-cmp = { workspace = true }

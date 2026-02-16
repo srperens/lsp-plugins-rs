@@ -8,6 +8,15 @@
 // lsp-plugins/lsp-dsp-lib hand-tuned SIMD library for three-way benchmarks.
 
 fn main() {
+    #[cfg(feature = "cpp-ref")]
+    build_cpp_ref();
+
+    #[cfg(feature = "upstream-bench")]
+    build_upstream();
+}
+
+#[cfg(feature = "cpp-ref")]
+fn build_cpp_ref() {
     // Generic build — for correctness tests (no FMA, deterministic rounding)
     cc::Build::new()
         .cpp(true)
@@ -29,10 +38,6 @@ fn main() {
         .flag_if_supported("-march=native")
         .warnings(false)
         .compile("lsp_dsp_ref_native");
-
-    // Upstream lsp-dsp-lib hand-tuned SIMD — for three-way benchmarks
-    #[cfg(feature = "upstream-bench")]
-    build_upstream();
 }
 
 #[cfg(feature = "upstream-bench")]
