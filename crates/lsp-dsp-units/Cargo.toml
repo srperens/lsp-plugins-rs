@@ -40,3 +40,7 @@ harness = false
 [[bench]]
 name = "oversampler_bench"
 harness = false
+
+[[bench]]
+name = "ab_perf"
+harness = false
