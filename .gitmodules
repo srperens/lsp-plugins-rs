@@ -1,0 +1,6 @@
+[submodule "third_party/lsp-dsp-lib"]
+	path = third_party/lsp-dsp-lib
+	url = https://github.com/lsp-plugins/lsp-dsp-lib.git
+[submodule "third_party/lsp-common-lib"]
+	path = third_party/lsp-common-lib
+	url = https://github.com/lsp-plugins/lsp-common-lib.git

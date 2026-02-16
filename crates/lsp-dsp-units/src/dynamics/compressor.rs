@@ -8,7 +8,7 @@
 use crate::consts::{FLOAT_SAT_P_INF, GAIN_AMP_M_72_DB};
 use crate::interpolation::hermite_quadratic;
 use crate::units::millis_to_samples;
-use lsp_dsp_lib::dynamics::compressor_x2_gain;
+use lsp_dsp_lib::dynamics::{compressor_x2_gain, compressor_x2_gain_single};
 use lsp_dsp_lib::types::{CompressorKnee, CompressorX2};
 use std::f32::consts::FRAC_1_SQRT_2;
 
@@ -342,10 +342,7 @@ impl Compressor {
         }
 
         // Calculate gain for single sample
-        let mut gain = [0.0];
-        let env_arr = [self.envelope];
-        compressor_x2_gain(&mut gain, &env_arr, &self.comp);
-        gain[0]
+        compressor_x2_gain_single(self.envelope, &self.comp)
     }
 
     /// Compute the compression curve: output = gain(input) * input.

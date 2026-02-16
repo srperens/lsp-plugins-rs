@@ -8,7 +8,7 @@
 use crate::consts::GAIN_AMP_M_72_DB;
 use crate::interpolation::hermite_cubic;
 use crate::units::millis_to_samples;
-use lsp_dsp_lib::dynamics::gate_x1_gain;
+use lsp_dsp_lib::dynamics::{gate_x1_gain, gate_x1_gain_single};
 use lsp_dsp_lib::types::GateKnee;
 use std::f32::consts::FRAC_1_SQRT_2;
 
@@ -230,10 +230,7 @@ impl Gate {
         } else {
             &self.open
         };
-        let mut raw_gain = [0.0];
-        let input_arr = [s_abs];
-        gate_x1_gain(&mut raw_gain, &input_arr, curve);
-        let target_gain = raw_gain[0];
+        let target_gain = gate_x1_gain_single(s_abs, curve);
 
         // Smooth the gain with attack EMA / linear release / hold
         if target_gain < self.envelope {

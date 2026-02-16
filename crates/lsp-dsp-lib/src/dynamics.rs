@@ -12,6 +12,36 @@ use multiversion::multiversion;
 
 // ─── Compressor ────────────────────────────────────────────────────────────
 
+/// Compute dual-knee compressor gain for a single sample (scalar, no slices).
+///
+/// `x` should already be `abs(sample)`. Returns the gain multiplier.
+#[inline]
+pub fn compressor_x2_gain_single(x: f32, c: &CompressorX2) -> f32 {
+    if x <= c.k[0].start && x <= c.k[1].start {
+        return c.k[0].gain * c.k[1].gain;
+    }
+
+    let lx = x.ln();
+
+    let g1 = if x <= c.k[0].start {
+        c.k[0].gain
+    } else if x >= c.k[0].end {
+        (lx * c.k[0].tilt[0] + c.k[0].tilt[1]).exp()
+    } else {
+        ((c.k[0].herm[0] * lx + c.k[0].herm[1]) * lx + c.k[0].herm[2]).exp()
+    };
+
+    let g2 = if x <= c.k[1].start {
+        c.k[1].gain
+    } else if x >= c.k[1].end {
+        (lx * c.k[1].tilt[0] + c.k[1].tilt[1]).exp()
+    } else {
+        ((c.k[1].herm[0] * lx + c.k[1].herm[1]) * lx + c.k[1].herm[2]).exp()
+    };
+
+    g1 * g2
+}
+
 /// Compute dual-knee compressor gain for each sample.
 ///
 /// For each input `x = |src[i]|`:
@@ -89,6 +119,21 @@ pub fn compressor_x2_curve(dst: &mut [f32], src: &[f32], c: &CompressorX2) {
 
 // ─── Gate ──────────────────────────────────────────────────────────────────
 
+/// Compute gate gain for a single sample (scalar, no slices).
+///
+/// `x` should already be `abs(sample)`. Returns the gain multiplier.
+#[inline]
+pub fn gate_x1_gain_single(x: f32, c: &GateKnee) -> f32 {
+    if x <= c.start {
+        c.gain_start
+    } else if x >= c.end {
+        c.gain_end
+    } else {
+        let lx = x.ln();
+        (((c.herm[0] * lx + c.herm[1]) * lx + c.herm[2]) * lx + c.herm[3]).exp()
+    }
+}
+
 /// Compute gate gain for each sample.
 ///
 /// For each input `x = |src[i]|`:
@@ -127,6 +172,27 @@ pub fn gate_x1_curve(dst: &mut [f32], src: &[f32], c: &GateKnee) {
 }
 
 // ─── Upward Expander ───────────────────────────────────────────────────────
+
+/// Compute upward expander gain for a single sample (scalar, no slices).
+///
+/// `x` should already be `abs(sample)`. Returns the gain multiplier.
+#[inline]
+pub fn uexpander_x1_gain_single(x: f32, c: &ExpanderKnee) -> f32 {
+    if x <= c.start {
+        if x >= c.threshold {
+            let lx = x.ln();
+            (lx * c.tilt[0] + c.tilt[1]).exp()
+        } else {
+            (c.threshold.ln() * c.tilt[0] + c.tilt[1]).exp()
+        }
+    } else if x >= c.end {
+        let lx = x.ln();
+        (lx * c.tilt[0] + c.tilt[1]).exp()
+    } else {
+        let lx = x.ln();
+        ((c.herm[0] * lx + c.herm[1]) * lx + c.herm[2]).exp()
+    }
+}
 
 /// Compute upward expander gain for each sample.
 ///
@@ -176,6 +242,24 @@ pub fn uexpander_x1_curve(dst: &mut [f32], src: &[f32], c: &ExpanderKnee) {
             ((c.herm[0] * lx + c.herm[1]) * lx + c.herm[2]).exp()
         };
         *d = gain * x;
+    }
+}
+
+/// Compute downward expander gain for a single sample (scalar, no slices).
+///
+/// `x` should already be `abs(sample)`. Returns the gain multiplier.
+#[inline]
+pub fn dexpander_x1_gain_single(x: f32, c: &ExpanderKnee) -> f32 {
+    if x >= c.end {
+        1.0
+    } else if x >= c.start {
+        let lx = x.ln();
+        ((c.herm[0] * lx + c.herm[1]) * lx + c.herm[2]).exp()
+    } else if x >= c.threshold {
+        let lx = x.ln();
+        (lx * c.tilt[0] + c.tilt[1]).exp()
+    } else {
+        0.0
     }
 }
 

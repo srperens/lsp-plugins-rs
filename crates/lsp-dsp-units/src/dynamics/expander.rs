@@ -8,7 +8,9 @@
 use crate::consts::GAIN_AMP_M_72_DB;
 use crate::interpolation::hermite_quadratic;
 use crate::units::millis_to_samples;
-use lsp_dsp_lib::dynamics::{dexpander_x1_gain, uexpander_x1_gain};
+use lsp_dsp_lib::dynamics::{
+    dexpander_x1_gain, dexpander_x1_gain_single, uexpander_x1_gain, uexpander_x1_gain_single,
+};
 use lsp_dsp_lib::types::ExpanderKnee;
 use std::f32::consts::FRAC_1_SQRT_2;
 
@@ -310,17 +312,10 @@ impl Expander {
         }
 
         // Calculate gain for single sample
-        let mut gain = [0.0];
-        let env_arr = [self.envelope];
         match self.mode {
-            ExpanderMode::Downward => {
-                dexpander_x1_gain(&mut gain, &env_arr, &self.exp_knee);
-            }
-            ExpanderMode::Upward => {
-                uexpander_x1_gain(&mut gain, &env_arr, &self.exp_knee);
-            }
+            ExpanderMode::Downward => dexpander_x1_gain_single(self.envelope, &self.exp_knee),
+            ExpanderMode::Upward => uexpander_x1_gain_single(self.envelope, &self.exp_knee),
         }
-        gain[0]
     }
 
     /// Compute the expansion curve: output = gain(input) * input.
