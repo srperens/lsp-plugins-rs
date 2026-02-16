@@ -259,26 +259,19 @@ impl DspContext {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     fn enable_ftz(&mut self) {
         unsafe {
-            #[cfg(target_arch = "x86")]
-            use core::arch::x86::{_mm_getcsr, _mm_setcsr};
-            #[cfg(target_arch = "x86_64")]
-            use core::arch::x86_64::{_mm_getcsr, _mm_setcsr};
-
-            let csr = _mm_getcsr();
+            let mut csr: u32 = 0;
+            core::arch::asm!("stmxcsr [{}]", in(reg) &mut csr, options(nostack));
             self.saved_fpcr = csr as u64;
-            _mm_setcsr(csr | MXCSR_FTZ | MXCSR_DAZ);
+            let new_csr = csr | MXCSR_FTZ | MXCSR_DAZ;
+            core::arch::asm!("ldmxcsr [{}]", in(reg) &new_csr, options(nostack));
         }
     }
 
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     fn restore_fpcr(&self) {
         unsafe {
-            #[cfg(target_arch = "x86")]
-            use core::arch::x86::_mm_setcsr;
-            #[cfg(target_arch = "x86_64")]
-            use core::arch::x86_64::_mm_setcsr;
-
-            _mm_setcsr(self.saved_fpcr as u32);
+            let csr = self.saved_fpcr as u32;
+            core::arch::asm!("ldmxcsr [{}]", in(reg) &csr, options(nostack));
         }
     }
 
