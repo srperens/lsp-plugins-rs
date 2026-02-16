@@ -16,6 +16,7 @@ use gstreamer::glib;
 use gstreamer::prelude::*;
 use gstreamer::subclass::prelude::*;
 use gstreamer_audio::subclass::prelude::*;
+use gstreamer_base::prelude::*;
 
 use lsp_dsp_units::filters::coeffs::FilterType;
 use lsp_dsp_units::filters::equalizer::Equalizer;
@@ -43,6 +44,8 @@ const DEFAULT_ENABLED: bool = true;
 // ── Property name constants ────────────────────────────────────────
 
 const PROP_NUM_BANDS: &str = "num-bands";
+
+const PROP_ENABLED: &str = "enabled";
 
 // Per-band property name fragments
 const PROP_FREQUENCY_SUFFIX: &str = "-frequency";
@@ -112,6 +115,7 @@ impl Default for BandParams {
 struct EqualizerParams {
     num_bands: u32,
     bands: [BandParams; MAX_BANDS],
+    enabled: bool,
 }
 
 impl Default for EqualizerParams {
@@ -119,6 +123,7 @@ impl Default for EqualizerParams {
         Self {
             num_bands: DEFAULT_NUM_BANDS,
             bands: std::array::from_fn(|_| BandParams::default()),
+            enabled: true,
         }
     }
 }
@@ -276,6 +281,12 @@ impl ObjectImpl for LspRsEqualizer {
                     .default_value(DEFAULT_NUM_BANDS)
                     .mutable_ready()
                     .build(),
+                glib::ParamSpecBoolean::builder(PROP_ENABLED)
+                    .nick("Enabled")
+                    .blurb("Enable processing (false = passthrough)")
+                    .default_value(true)
+                    .mutable_playing()
+                    .build(),
             ];
             for band in 0..MAX_BANDS {
                 props.extend(band_param_specs(band));
@@ -288,6 +299,11 @@ impl ObjectImpl for LspRsEqualizer {
     fn set_property(&self, _id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
         let mut inner = self.inner.lock().expect("mutex poisoned");
         let name = pspec.name();
+        if name == PROP_ENABLED {
+            inner.params.enabled = value.get().expect("type checked");
+            self.obj().set_passthrough(!inner.params.enabled);
+            return;
+        }
         if name == PROP_NUM_BANDS {
             inner.params.num_bands = value.get().expect("type checked");
             // Rebuild state if already running
@@ -322,6 +338,10 @@ impl ObjectImpl for LspRsEqualizer {
     fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
         let inner = self.inner.lock().expect("mutex poisoned");
         let name = pspec.name();
+
+        if name == PROP_ENABLED {
+            return inner.params.enabled.to_value();
+        }
 
         if name == PROP_NUM_BANDS {
             return inner.params.num_bands.to_value();
@@ -470,6 +490,9 @@ impl AudioFilterImpl for LspRsEqualizer {
         })?;
 
         inner.state = Some(State::new(sample_rate, channels, &inner.params));
+        let enabled = inner.params.enabled;
+        drop(inner);
+        self.obj().set_passthrough(!enabled);
         Ok(())
     }
 }
@@ -692,5 +715,20 @@ mod tests {
         pipeline
             .set_state(gstreamer::State::Null)
             .expect("set null");
+    }
+
+    #[test]
+    fn enabled_default_is_true() {
+        let elem = make_equalizer();
+        assert!(elem.property::<bool>("enabled"));
+    }
+
+    #[test]
+    fn enabled_set_get_roundtrip() {
+        let elem = make_equalizer();
+        elem.set_property("enabled", false);
+        assert!(!elem.property::<bool>("enabled"));
+        elem.set_property("enabled", true);
+        assert!(elem.property::<bool>("enabled"));
     }
 }
