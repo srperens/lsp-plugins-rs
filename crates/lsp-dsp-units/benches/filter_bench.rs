@@ -2,7 +2,9 @@
 
 //! Criterion benchmarks for filter processors.
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use std::hint::black_box;
+
+use criterion::{Criterion, criterion_group, criterion_main};
 use lsp_dsp_units::filters::bank::FilterBank;
 use lsp_dsp_units::filters::butterworth::{ButterworthFilter, ButterworthType};
 use lsp_dsp_units::filters::coeffs::FilterType;

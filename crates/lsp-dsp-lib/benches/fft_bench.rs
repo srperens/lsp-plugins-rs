@@ -2,7 +2,9 @@
 
 //! Criterion benchmarks for FFT operations.
 
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use std::hint::black_box;
+
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use lsp_dsp_lib::fft::{direct_fft, normalize_fft, reverse_fft};
 use std::f32::consts::PI;
 

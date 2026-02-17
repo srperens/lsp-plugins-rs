@@ -2,7 +2,9 @@
 
 //! Criterion benchmarks for dynamics processors.
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use std::hint::black_box;
+
+use criterion::{Criterion, criterion_group, criterion_main};
 use lsp_dsp_units::dynamics::compressor::{Compressor, CompressorMode};
 use lsp_dsp_units::dynamics::expander::{Expander, ExpanderMode};
 use lsp_dsp_units::dynamics::gate::Gate;

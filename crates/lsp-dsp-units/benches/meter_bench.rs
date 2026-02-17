@@ -2,7 +2,9 @@
 
 //! Criterion benchmarks for audio meters.
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use std::hint::black_box;
+
+use criterion::{Criterion, criterion_group, criterion_main};
 use lsp_dsp_units::meters::correlometer::Correlometer;
 use lsp_dsp_units::meters::loudness::LufsMeter;
 use lsp_dsp_units::meters::peak::PeakMeter;

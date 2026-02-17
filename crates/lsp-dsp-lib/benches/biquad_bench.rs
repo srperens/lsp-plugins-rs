@@ -2,7 +2,9 @@
 
 //! Criterion benchmarks for biquad filter processing.
 
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use std::hint::black_box;
+
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use lsp_dsp_lib::filters::{
     biquad_process_x1, biquad_process_x2, biquad_process_x4, biquad_process_x8,
 };

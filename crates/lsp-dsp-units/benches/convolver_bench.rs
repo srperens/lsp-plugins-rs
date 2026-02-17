@@ -2,7 +2,9 @@
 
 //! Criterion benchmarks for the FFT-based partitioned convolver.
 
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use std::hint::black_box;
+
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use lsp_dsp_units::util::convolver::Convolver;
 
 const BUF_SIZE: usize = 1024;
