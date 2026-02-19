@@ -310,10 +310,10 @@ pub trait DspProcessor {
 - Compare output with `float_cmp::approx_eq!(f32, a, b, ulps = 4)`
 - Test signals: impulse, sine sweep, white noise (seeded PRNG)
 
-### Level 3: Performance benchmarks (A/B and three-way)
-- **Two-column** (default): Rust vs C++ reference (native-optimized: `-O3 -march=native`)
-- **Three-column** (`--features upstream-bench`): adds upstream hand-tuned SIMD from `third_party/`
-- The dual C++ builds ensure correctness tests use deterministic math while benchmarks use full optimizations
+### Level 3: Performance benchmarks (lsp-dsp-units vs upstream SIMD)
+- `cargo bench --bench ab_perf -p lsp-dsp-units --features upstream-bench`
+- Compares Rust high-level processors (compressor, gate, expander, EQ, meters) against upstream hand-tuned SIMD kernels from `third_party/`
+- The C++ reference (`-O3 -march=native`) is included as a baseline; the primary comparison is Rust vs upstream SIMD
 
 ### Level 4: GStreamer pipeline test
 - Build GStreamer pipeline with Rust plugin
@@ -334,7 +334,7 @@ Target tiers defined in `simd.rs`:
 - **x86_64**: AVX2+FMA, AVX, SSE4.1, baseline
 - **aarch64**: NEON (baseline on Apple Silicon)
 
-The `upstream-bench` Cargo feature enables three-way benchmarks by linking against the original hand-tuned SIMD assembly from the upstream lsp-dsp-lib (via git submodules in `third_party/`). The build script (`build.rs`) compiles each upstream SIMD tier with the appropriate compiler flags (e.g., `-mavx2`, `-msse4.1`).
+The `upstream-bench` Cargo feature enables benchmarking lsp-dsp-units processors against the upstream hand-tuned SIMD kernels from lsp-dsp-lib (via git submodules in `third_party/`). The build script (`build.rs`) compiles each upstream SIMD tier with the appropriate compiler flags (e.g., `-mavx2`, `-msse4.1`).
 
 ## License
 

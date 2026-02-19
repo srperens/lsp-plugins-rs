@@ -81,17 +81,11 @@ The test suite includes A/B comparison tests against the original C++ implementa
 ## Benchmarks
 
 ```sh
-# Run all benchmarks (Rust vs C++ reference)
-cargo bench
-
-# Run low-level A/B performance comparison
-cargo bench --bench ab_perf -p lsp-dsp-lib
-
-# Three-way benchmark: Rust vs C++ reference vs upstream hand-tuned SIMD
-cargo bench --bench ab_perf -p lsp-dsp-lib --features upstream-bench
+# High-level DSP processors: Rust vs upstream hand-tuned SIMD
+cargo bench --bench ab_perf -p lsp-dsp-units --features upstream-bench
 ```
 
-The `upstream-bench` feature links against the original [lsp-dsp-lib](https://github.com/lsp-plugins/lsp-dsp-lib) hand-tuned SIMD library (SSE/AVX/NEON assembly) via git submodules in `third_party/`, enabling direct comparison of the Rust port against the gold-standard implementations.
+The `upstream-bench` feature links against the original [lsp-dsp-lib](https://github.com/lsp-plugins/lsp-dsp-lib) hand-tuned SIMD library (SSE/AVX/NEON assembly) via git submodules in `third_party/`, enabling direct comparison of Rust high-level processors (compressor, gate, expander, EQ, meters) against upstream SIMD kernels.
 
 ## Third-party Dependencies
 
