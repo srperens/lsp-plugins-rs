@@ -32,6 +32,8 @@ const PROP_BITS: &str = "bits";
 struct State {
     dithers: Vec<Dither>,
     channels: usize,
+    /// Re-usable scratch buffer for de-interleaved channel data.
+    chan_buf: Vec<f32>,
 }
 
 impl State {
@@ -44,7 +46,11 @@ impl State {
             d.set_bit_depth(bits);
             dithers.push(d);
         }
-        Self { dithers, channels }
+        Self {
+            dithers,
+            channels,
+            chan_buf: Vec::new(),
+        }
     }
 
     /// Re-apply the bit depth to every channel dither.
@@ -188,13 +194,18 @@ impl BaseTransformImpl for LspRsDither {
 
         let frame_count = samples.len() / channels;
 
-        // Process sample-by-sample per channel with independent dither RNGs.
-        for frame in 0..frame_count {
-            for ch in 0..channels {
-                let idx = frame * channels + ch;
-                let mut single = [samples[idx]];
-                state.dithers[ch].process_inplace(&mut single);
-                samples[idx] = single[0];
+        // Bulk-process each channel through its independent dither RNG.
+        state.chan_buf.resize(frame_count, 0.0);
+        for ch in 0..channels {
+            // De-interleave
+            for i in 0..frame_count {
+                state.chan_buf[i] = samples[i * channels + ch];
+            }
+            // Bulk process (one call per channel instead of one per sample)
+            state.dithers[ch].process_inplace(&mut state.chan_buf[..frame_count]);
+            // Re-interleave
+            for i in 0..frame_count {
+                samples[i * channels + ch] = state.chan_buf[i];
             }
         }
 

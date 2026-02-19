@@ -36,6 +36,8 @@ struct State {
     true_peak_meters: Vec<TruePeakMeter>,
     lufs_meter: LufsMeter,
     channels: usize,
+    /// Re-usable per-channel de-interleave buffers.
+    channel_bufs: Vec<Vec<f32>>,
 }
 
 impl State {
@@ -54,12 +56,14 @@ impl State {
         }
 
         let lufs_meter = LufsMeter::new(sample_rate, channels);
+        let channel_bufs = (0..channels).map(|_| Vec::new()).collect();
 
         Self {
             peak_meters,
             true_peak_meters,
             lufs_meter,
             channels,
+            channel_bufs,
         }
     }
 }
@@ -252,19 +256,30 @@ impl BaseTransformImpl for LspRsMeter {
 
         let frame_count = samples.len() / channels;
 
-        // De-interleave into per-channel buffers for the LUFS meter.
-        let mut channel_bufs: Vec<Vec<f32>> = vec![Vec::with_capacity(frame_count); channels];
+        // Resize pre-allocated buffers.
+        for buf in &mut state.channel_bufs {
+            buf.resize(frame_count, 0.0);
+        }
+
+        // De-interleave into per-channel buffers.
         for frame in 0..frame_count {
             for ch in 0..channels {
-                let s = samples[frame * channels + ch];
-                channel_bufs[ch].push(s);
-                state.peak_meters[ch].process_single(s);
-                state.true_peak_meters[ch].process_single(s);
+                state.channel_bufs[ch][frame] = samples[frame * channels + ch];
             }
         }
 
+        // Bulk process per channel (2 calls per channel instead of 2 per sample).
+        for ch in 0..channels {
+            state.peak_meters[ch].process(&state.channel_bufs[ch][..frame_count]);
+            state.true_peak_meters[ch].process(&state.channel_bufs[ch][..frame_count]);
+        }
+
         // Feed de-interleaved audio to the LUFS meter.
-        let channel_refs: Vec<&[f32]> = channel_bufs.iter().map(|v| v.as_slice()).collect();
+        let channel_refs: Vec<&[f32]> = state
+            .channel_bufs
+            .iter()
+            .map(|v| &v[..frame_count])
+            .collect();
         state.lufs_meter.process(&channel_refs);
 
         // Update the readings snapshot.

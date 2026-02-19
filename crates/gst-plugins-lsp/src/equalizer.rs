@@ -135,6 +135,8 @@ struct State {
     equalizers: Vec<Equalizer>,
     sample_rate: f32,
     channels: usize,
+    /// Re-usable per-channel de-interleave buffers.
+    channel_bufs: Vec<Vec<f32>>,
 }
 
 impl State {
@@ -148,10 +150,12 @@ impl State {
             eq.update_settings();
             equalizers.push(eq);
         }
+        let channel_bufs = (0..channels).map(|_| Vec::new()).collect();
         Self {
             equalizers,
             sample_rate,
             channels,
+            channel_bufs,
         }
     }
 
@@ -433,26 +437,27 @@ impl BaseTransformImpl for LspRsEqualizer {
         if channels == 1 {
             state.equalizers[0].process_inplace(samples);
         } else {
-            // Allocate per-channel temporary buffers
-            let mut channel_bufs: Vec<Vec<f32>> =
-                (0..channels).map(|_| vec![0.0f32; frame_count]).collect();
+            // Resize pre-allocated per-channel buffers.
+            for buf in &mut state.channel_bufs {
+                buf.resize(frame_count, 0.0);
+            }
 
             // De-interleave
             for frame in 0..frame_count {
                 for ch in 0..channels {
-                    channel_bufs[ch][frame] = samples[frame * channels + ch];
+                    state.channel_bufs[ch][frame] = samples[frame * channels + ch];
                 }
             }
 
             // Process each channel
-            for (ch, buf_ch) in channel_bufs.iter_mut().enumerate() {
+            for (ch, buf_ch) in state.channel_bufs.iter_mut().enumerate() {
                 state.equalizers[ch].process_inplace(buf_ch);
             }
 
             // Re-interleave
             for frame in 0..frame_count {
                 for ch in 0..channels {
-                    samples[frame * channels + ch] = channel_bufs[ch][frame];
+                    samples[frame * channels + ch] = state.channel_bufs[ch][frame];
                 }
             }
         }

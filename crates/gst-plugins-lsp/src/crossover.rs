@@ -45,34 +45,44 @@ const PROP_TOPOLOGY: &str = "topology";
 
 /// Processing state for the crossover element.
 struct State {
-    crossover: Crossover,
+    /// One crossover instance per channel to maintain independent filter state.
+    crossovers: Vec<Crossover>,
     /// Scratch output buffers for each band.
     band_bufs: Vec<Vec<f32>>,
+    /// Re-usable scratch buffer for de-interleaved input data.
+    input_buf: Vec<f32>,
     channels: usize,
 }
 
 impl State {
     fn new(sample_rate: f32, channels: usize, params: &CrossoverParams) -> Self {
-        let mut crossover = Crossover::new();
-        crossover.set_sample_rate(sample_rate);
-        params.apply(&mut crossover);
-        crossover.update_settings();
+        let mut crossovers = Vec::with_capacity(channels);
+        for _ in 0..channels {
+            let mut xover = Crossover::new();
+            xover.set_sample_rate(sample_rate);
+            params.apply(&mut xover);
+            xover.update_settings();
+            crossovers.push(xover);
+        }
 
-        let num_bands = crossover.num_bands();
+        let num_bands = crossovers.first().map_or(2, |x| x.num_bands());
         let band_bufs = vec![Vec::new(); num_bands];
 
         Self {
-            crossover,
+            crossovers,
             band_bufs,
+            input_buf: Vec::new(),
             channels,
         }
     }
 
-    /// Re-apply parameter changes.
+    /// Re-apply parameter changes to all per-channel crossover instances.
     fn update_params(&mut self, params: &CrossoverParams) {
-        params.apply(&mut self.crossover);
-        self.crossover.update_settings();
-        let num_bands = self.crossover.num_bands();
+        for xover in &mut self.crossovers {
+            params.apply(xover);
+            xover.update_settings();
+        }
+        let num_bands = self.crossovers.first().map_or(2, |x| x.num_bands());
         self.band_bufs.resize_with(num_bands, Vec::new);
     }
 }
@@ -306,30 +316,21 @@ impl BaseTransformImpl for LspRsCrossover {
         };
 
         let frame_count = samples.len() / channels;
-        let num_bands = state.crossover.num_bands();
+        let num_bands = state.crossovers.first().map_or(2, |x| x.num_bands());
         let band_idx = selected_band.min(num_bands - 1);
 
-        // Ensure band buffers are large enough.
+        // Ensure band buffers and input buffer are large enough.
         for b in &mut state.band_bufs {
-            if b.len() < frame_count {
-                b.resize(frame_count, 0.0);
-            }
+            b.resize(frame_count, 0.0);
         }
+        state.input_buf.resize(frame_count, 0.0);
 
-        // Process each channel through the crossover independently.
-        // The crossover is mono, so we de-interleave, process, pick
-        // the selected band, and re-interleave.
-        //
-        // Note: The Crossover struct holds filter state. For multi-channel
-        // use, we process one channel at a time through the same crossover.
-        // This is a simplification -- ideally each channel would have its
-        // own crossover instance. For now, clear between channels.
+        // Process each channel through its own crossover instance.
         for ch in 0..channels {
-            // De-interleave this channel into band_bufs[0] as temp input.
+            // De-interleave into pre-allocated input buffer.
             for i in 0..frame_count {
-                state.band_bufs[0][i] = samples[i * channels + ch];
+                state.input_buf[i] = samples[i * channels + ch];
             }
-            let input: Vec<f32> = state.band_bufs[0][..frame_count].to_vec();
 
             // Build mutable slice refs for the crossover output.
             let mut band_slices: Vec<&mut [f32]> = state
@@ -338,16 +339,13 @@ impl BaseTransformImpl for LspRsCrossover {
                 .map(|b| &mut b[..frame_count])
                 .collect();
 
-            state.crossover.process(&mut band_slices, &input);
+            // Per-channel crossover — no clear() needed.
+            state.crossovers[ch].process(&mut band_slices, &state.input_buf[..frame_count]);
 
             // Re-interleave the selected band back.
             for i in 0..frame_count {
                 samples[i * channels + ch] = state.band_bufs[band_idx][i];
             }
-
-            // Clear crossover state between channels so channel N+1
-            // does not leak filter memory from channel N.
-            state.crossover.clear();
         }
 
         drop(map);
