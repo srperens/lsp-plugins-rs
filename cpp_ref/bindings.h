@@ -543,6 +543,26 @@ void ref_panometer_process(ref_panometer_t *m, const float *left, const float *r
 void ref_panometer_clear(ref_panometer_t *m);
 float ref_panometer_read(const ref_panometer_t *m);
 
+// ─── Limiter (upstream SIMD reimplementation) ───────────────────────
+
+/// Limiter modes (matches Rust LimiterMode).
+enum {
+    REF_LIM_HERM_THIN = 0, REF_LIM_HERM_WIDE, REF_LIM_HERM_TAIL, REF_LIM_HERM_DUCK,
+    REF_LIM_EXP_THIN,  REF_LIM_EXP_WIDE,  REF_LIM_EXP_TAIL,  REF_LIM_EXP_DUCK,
+    REF_LIM_LINE_THIN, REF_LIM_LINE_WIDE, REF_LIM_LINE_TAIL, REF_LIM_LINE_DUCK,
+};
+
+void  *upstream_limiter_create(size_t max_sr, float max_lookahead_ms);
+void   upstream_limiter_destroy(void *ptr);
+void   upstream_limiter_configure(void *ptr, size_t sr, int mode,
+           float threshold, float attack, float release,
+           float lookahead, float knee);
+void   upstream_limiter_configure_alr(void *ptr, int enable,
+           float attack, float release, float knee);
+void   upstream_limiter_process(void *ptr, float *gain,
+           const float *sc, size_t samples);
+size_t upstream_limiter_latency(void *ptr);
+
 #ifdef __cplusplus
 }
 #endif
