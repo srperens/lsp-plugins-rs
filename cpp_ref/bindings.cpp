@@ -250,28 +250,17 @@ extern "C" void ref_uexpander_x1_gain(float *dst, const float *src,
 {
     for (size_t i = 0; i < count; ++i)
     {
-        float x = fabsf(src[i]);
-        if (x <= c->start)
-        {
-            if (x >= c->threshold)
-            {
-                float lx = logf(x);
-                dst[i] = expf(lx * c->tilt[0] + c->tilt[1]);
-            }
-            else
-            {
-                dst[i] = expf(logf(c->threshold) * c->tilt[0] + c->tilt[1]);
-            }
-        }
-        else if (x >= c->end)
+        float x = fminf(fabsf(src[i]), c->threshold);
+        if (x > c->start)
         {
             float lx = logf(x);
-            dst[i] = expf(lx * c->tilt[0] + c->tilt[1]);
+            dst[i] = (x >= c->end) ?
+                      expf(c->tilt[0] * lx + c->tilt[1]) :
+                      expf((c->herm[0] * lx + c->herm[1]) * lx + c->herm[2]);
         }
         else
         {
-            float lx = logf(x);
-            dst[i] = expf((c->herm[0] * lx + c->herm[1]) * lx + c->herm[2]);
+            dst[i] = 1.0f;
         }
     }
 }
@@ -281,31 +270,18 @@ extern "C" void ref_uexpander_x1_curve(float *dst, const float *src,
 {
     for (size_t i = 0; i < count; ++i)
     {
-        float x = fabsf(src[i]);
-        float gain;
-        if (x <= c->start)
-        {
-            if (x >= c->threshold)
-            {
-                float lx = logf(x);
-                gain = expf(lx * c->tilt[0] + c->tilt[1]);
-            }
-            else
-            {
-                gain = expf(logf(c->threshold) * c->tilt[0] + c->tilt[1]);
-            }
-        }
-        else if (x >= c->end)
+        float x = fminf(fabsf(src[i]), c->threshold);
+        if (x > c->start)
         {
             float lx = logf(x);
-            gain = expf(lx * c->tilt[0] + c->tilt[1]);
+            dst[i] = (x >= c->end) ?
+                      x * expf(c->tilt[0] * lx + c->tilt[1]) :
+                      x * expf((c->herm[0] * lx + c->herm[1]) * lx + c->herm[2]);
         }
         else
         {
-            float lx = logf(x);
-            gain = expf((c->herm[0] * lx + c->herm[1]) * lx + c->herm[2]);
+            dst[i] = x;
         }
-        dst[i] = gain * x;
     }
 }
 
@@ -313,28 +289,17 @@ extern "C" void ref_uexpander_x1_gain_inplace(float *buf, const ref_expander_kne
 {
     for (size_t i = 0; i < count; ++i)
     {
-        float x = fabsf(buf[i]);
-        if (x <= c->start)
-        {
-            if (x >= c->threshold)
-            {
-                float lx = logf(x);
-                buf[i] = expf(lx * c->tilt[0] + c->tilt[1]);
-            }
-            else
-            {
-                buf[i] = expf(logf(c->threshold) * c->tilt[0] + c->tilt[1]);
-            }
-        }
-        else if (x >= c->end)
+        float x = fminf(fabsf(buf[i]), c->threshold);
+        if (x > c->start)
         {
             float lx = logf(x);
-            buf[i] = expf(lx * c->tilt[0] + c->tilt[1]);
+            buf[i] = (x >= c->end) ?
+                      expf(c->tilt[0] * lx + c->tilt[1]) :
+                      expf((c->herm[0] * lx + c->herm[1]) * lx + c->herm[2]);
         }
         else
         {
-            float lx = logf(x);
-            buf[i] = expf((c->herm[0] * lx + c->herm[1]) * lx + c->herm[2]);
+            buf[i] = 1.0f;
         }
     }
 }

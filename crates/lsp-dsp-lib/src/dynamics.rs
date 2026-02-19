@@ -178,19 +178,16 @@ pub fn gate_x1_curve(dst: &mut [f32], src: &[f32], c: &GateKnee) {
 /// `x` should already be `abs(sample)`. Returns the gain multiplier.
 #[inline]
 pub fn uexpander_x1_gain_single(x: f32, c: &ExpanderKnee) -> f32 {
-    if x <= c.start {
-        if x >= c.threshold {
-            let lx = x.ln();
+    let x = x.min(c.threshold);
+    if x > c.start {
+        let lx = x.ln();
+        if x >= c.end {
             (lx * c.tilt[0] + c.tilt[1]).exp()
         } else {
-            (c.threshold.ln() * c.tilt[0] + c.tilt[1]).exp()
+            ((c.herm[0] * lx + c.herm[1]) * lx + c.herm[2]).exp()
         }
-    } else if x >= c.end {
-        let lx = x.ln();
-        (lx * c.tilt[0] + c.tilt[1]).exp()
     } else {
-        let lx = x.ln();
-        ((c.herm[0] * lx + c.herm[1]) * lx + c.herm[2]).exp()
+        1.0
     }
 }
 
@@ -201,23 +198,16 @@ pub fn uexpander_x1_gain_single(x: f32, c: &ExpanderKnee) -> f32 {
 #[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn uexpander_x1_gain(dst: &mut [f32], src: &[f32], c: &ExpanderKnee) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
-        let x = s.abs();
-        *d = if x <= c.start {
-            // Below knee: use threshold gain
-            if x >= c.threshold {
-                let lx = x.ln();
+        let x = s.abs().min(c.threshold);
+        *d = if x > c.start {
+            let lx = x.ln();
+            if x >= c.end {
                 (lx * c.tilt[0] + c.tilt[1]).exp()
             } else {
-                (c.threshold.ln() * c.tilt[0] + c.tilt[1]).exp()
+                ((c.herm[0] * lx + c.herm[1]) * lx + c.herm[2]).exp()
             }
-        } else if x >= c.end {
-            // Above knee: linear in log domain
-            let lx = x.ln();
-            (lx * c.tilt[0] + c.tilt[1]).exp()
         } else {
-            // In knee: Hermite interpolation
-            let lx = x.ln();
-            ((c.herm[0] * lx + c.herm[1]) * lx + c.herm[2]).exp()
+            1.0
         };
     }
 }
@@ -226,22 +216,17 @@ pub fn uexpander_x1_gain(dst: &mut [f32], src: &[f32], c: &ExpanderKnee) {
 #[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn uexpander_x1_curve(dst: &mut [f32], src: &[f32], c: &ExpanderKnee) {
     for (d, s) in dst.iter_mut().zip(src.iter()) {
-        let x = s.abs();
-        let gain = if x <= c.start {
-            if x >= c.threshold {
-                let lx = x.ln();
-                (lx * c.tilt[0] + c.tilt[1]).exp()
+        let x = s.abs().min(c.threshold);
+        *d = if x > c.start {
+            let lx = x.ln();
+            if x >= c.end {
+                x * (lx * c.tilt[0] + c.tilt[1]).exp()
             } else {
-                (c.threshold.ln() * c.tilt[0] + c.tilt[1]).exp()
+                x * ((c.herm[0] * lx + c.herm[1]) * lx + c.herm[2]).exp()
             }
-        } else if x >= c.end {
-            let lx = x.ln();
-            (lx * c.tilt[0] + c.tilt[1]).exp()
         } else {
-            let lx = x.ln();
-            ((c.herm[0] * lx + c.herm[1]) * lx + c.herm[2]).exp()
+            x
         };
-        *d = gain * x;
     }
 }
 
@@ -358,20 +343,16 @@ pub fn gate_x1_gain_inplace(buf: &mut [f32], c: &GateKnee) {
 #[multiversion(targets("x86_64+avx2+fma", "x86_64+avx", "x86_64+sse4.1", "aarch64+neon",))]
 pub fn uexpander_x1_gain_inplace(buf: &mut [f32], c: &ExpanderKnee) {
     for d in buf.iter_mut() {
-        let x = d.abs();
-        *d = if x <= c.start {
-            if x >= c.threshold {
-                let lx = x.ln();
+        let x = d.abs().min(c.threshold);
+        *d = if x > c.start {
+            let lx = x.ln();
+            if x >= c.end {
                 (lx * c.tilt[0] + c.tilt[1]).exp()
             } else {
-                (c.threshold.ln() * c.tilt[0] + c.tilt[1]).exp()
+                ((c.herm[0] * lx + c.herm[1]) * lx + c.herm[2]).exp()
             }
-        } else if x >= c.end {
-            let lx = x.ln();
-            (lx * c.tilt[0] + c.tilt[1]).exp()
         } else {
-            let lx = x.ln();
-            ((c.herm[0] * lx + c.herm[1]) * lx + c.herm[2]).exp()
+            1.0
         };
     }
 }

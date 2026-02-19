@@ -628,7 +628,7 @@ mod tests {
     }
 
     #[test]
-    fn test_upward_expansion_boosts_high_signals() {
+    fn test_upward_expansion_unity_above_threshold() {
         let mut exp = Expander::new();
         exp.set_sample_rate(48000.0)
             .set_mode(ExpanderMode::Upward)
@@ -639,17 +639,18 @@ mod tests {
             .set_release(100.0)
             .update_settings();
 
-        // Test with signal above threshold
+        // Test with signal above threshold.
+        // Upstream behavior: the gain curve clamps x = min(|x|, threshold),
+        // and since threshold == start for the upward knee, gain is always 1.0.
         let high_signal = 0.7;
         let input_high = vec![high_signal; 500];
         let mut output_high = vec![0.0; 500];
         exp.process(&mut output_high, None, &input_high);
 
-        // Gain should be greater than 1.0 for signals above threshold
         let gain_high = output_high.last().unwrap();
         assert!(
-            *gain_high > 1.0,
-            "Upward expansion should boost signals above threshold"
+            (*gain_high - 1.0).abs() < 0.01,
+            "Upward expander gain should be unity (upstream behavior), got {gain_high}"
         );
     }
 
