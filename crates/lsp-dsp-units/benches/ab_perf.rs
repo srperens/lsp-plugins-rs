@@ -824,14 +824,9 @@ fn bench_butterworth_lp8(c: &mut Criterion) {
                 &mut bqs[0],
             );
             // Remaining sections: output -> tmp -> output
-            for si in 1..n_sections {
+            for bq in bqs.iter_mut().skip(1) {
                 tmp.copy_from_slice(&output);
-                upstream_units_biquad_process_x1(
-                    output.as_mut_ptr(),
-                    tmp.as_ptr(),
-                    BUF_SIZE,
-                    &mut bqs[si],
-                );
+                upstream_units_biquad_process_x1(output.as_mut_ptr(), tmp.as_ptr(), BUF_SIZE, bq);
             }
         });
     });

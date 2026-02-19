@@ -599,9 +599,23 @@ fn ab_upstream_compressor_multi_block() {
 
 // ─── Compressor: parameter sweep ─────────────────────────────────────
 
+// (mode, atk_th, rel_th, boost_th, ratio, knee, attack, release, hold, label)
+type CompConfig<'a> = (
+    CompressorMode,
+    f32,
+    f32,
+    f32,
+    f32,
+    f32,
+    f32,
+    f32,
+    f32,
+    &'a str,
+);
+
 #[test]
 fn ab_upstream_compressor_param_sweep() {
-    let configs: &[(CompressorMode, f32, f32, f32, f32, f32, f32, f32, f32, &str)] = &[
+    let configs: &[CompConfig] = &[
         // (mode, atk_th, rel_th, boost_th, ratio, knee, attack, release, hold, label)
         // Low threshold, extreme ratio, fast attack
         (
@@ -870,10 +884,12 @@ fn ab_upstream_expander_multi_block() {
 
 // ─── Expander: parameter sweep ───────────────────────────────────────
 
+// (mode, atk_th, rel_th, ratio, knee, attack, release, hold, label)
+type ExpConfig<'a> = (ExpanderMode, f32, f32, f32, f32, f32, f32, f32, &'a str);
+
 #[test]
 fn ab_upstream_expander_param_sweep() {
-    let configs: &[(ExpanderMode, f32, f32, f32, f32, f32, f32, f32, &str)] = &[
-        // (mode, atk_th, rel_th, ratio, knee, attack, release, hold, label)
+    let configs: &[ExpConfig] = &[
         // High threshold, high ratio, fast attack
         (
             ExpanderMode::Downward,
@@ -1272,14 +1288,9 @@ fn run_upstream_butterworth(
     let mut tmp = vec![0.0f32; n];
     unsafe {
         upstream_units_biquad_process_x1(upstream_out.as_mut_ptr(), input.as_ptr(), n, &mut bqs[0]);
-        for si in 1..n_sections {
+        for bq in bqs.iter_mut().skip(1) {
             tmp.copy_from_slice(&upstream_out);
-            upstream_units_biquad_process_x1(
-                upstream_out.as_mut_ptr(),
-                tmp.as_ptr(),
-                n,
-                &mut bqs[si],
-            );
+            upstream_units_biquad_process_x1(upstream_out.as_mut_ptr(), tmp.as_ptr(), n, bq);
         }
     }
 
@@ -1454,14 +1465,9 @@ fn ab_upstream_equalizer_4band() {
     let mut tmp = vec![0.0f32; n];
     unsafe {
         upstream_units_biquad_process_x1(upstream_out.as_mut_ptr(), input.as_ptr(), n, &mut bqs[0]);
-        for i in 1..n_bands {
+        for bq in bqs.iter_mut().skip(1) {
             tmp.copy_from_slice(&upstream_out);
-            upstream_units_biquad_process_x1(
-                upstream_out.as_mut_ptr(),
-                tmp.as_ptr(),
-                n,
-                &mut bqs[i],
-            );
+            upstream_units_biquad_process_x1(upstream_out.as_mut_ptr(), tmp.as_ptr(), n, bq);
         }
     }
 
@@ -1540,14 +1546,9 @@ fn run_eq_test(
     let mut tmp = vec![0.0f32; n];
     unsafe {
         upstream_units_biquad_process_x1(upstream_out.as_mut_ptr(), input.as_ptr(), n, &mut bqs[0]);
-        for i in 1..n_bands {
+        for bq in bqs.iter_mut().skip(1) {
             tmp.copy_from_slice(&upstream_out);
-            upstream_units_biquad_process_x1(
-                upstream_out.as_mut_ptr(),
-                tmp.as_ptr(),
-                n,
-                &mut bqs[i],
-            );
+            upstream_units_biquad_process_x1(upstream_out.as_mut_ptr(), tmp.as_ptr(), n, bq);
         }
     }
 
