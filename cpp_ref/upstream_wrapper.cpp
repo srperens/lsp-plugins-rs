@@ -118,3 +118,33 @@ extern "C" void upstream_complex_mul(
     ensure_init();
     lsp::dsp::complex_mul3(dst_re, dst_im, a_re, a_im, b_re, b_im, count);
 }
+
+// ─── Dynamics: compressor ────────────────────────────────────────────────
+
+extern "C" void upstream_compressor_x2_gain(
+    float *dst, const float *src, const void *c, size_t count)
+{
+    ensure_init();
+    lsp::dsp::compressor_x2_gain(dst, src,
+        reinterpret_cast<const lsp::dsp::compressor_x2_t *>(c), count);
+}
+
+// ─── Dynamics: gate ──────────────────────────────────────────────────────
+
+extern "C" void upstream_gate_x1_gain(
+    float *dst, const float *src, const void *c, size_t count)
+{
+    ensure_init();
+    lsp::dsp::gate_x1_gain(dst, src,
+        reinterpret_cast<const lsp::dsp::gate_knee_t *>(c), count);
+}
+
+// ─── Dynamics: downward expander ─────────────────────────────────────────
+
+extern "C" void upstream_dexpander_x1_gain(
+    float *dst, const float *src, const void *c, size_t count)
+{
+    ensure_init();
+    lsp::dsp::dexpander_x1_gain(dst, src,
+        reinterpret_cast<const lsp::dsp::expander_knee_t *>(c), count);
+}

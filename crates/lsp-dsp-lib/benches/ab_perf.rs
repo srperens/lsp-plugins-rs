@@ -116,6 +116,20 @@ unsafe extern "C" {
     );
 
     fn native_correlation_coefficient(a: *const f32, b: *const f32, count: usize) -> f32;
+
+    fn native_compressor_x2_gain(
+        dst: *mut f32,
+        src: *const f32,
+        c: *const CompressorX2,
+        count: usize,
+    );
+    fn native_gate_x1_gain(dst: *mut f32, src: *const f32, c: *const GateKnee, count: usize);
+    fn native_dexpander_x1_gain(
+        dst: *mut f32,
+        src: *const f32,
+        c: *const ExpanderKnee,
+        count: usize,
+    );
 }
 
 // ─── Upstream FFI (hand-tuned SIMD from lsp-plugins/lsp-dsp-lib) ────────
@@ -159,6 +173,20 @@ unsafe extern "C" {
         a_im: *const f32,
         b_re: *const f32,
         b_im: *const f32,
+        count: usize,
+    );
+
+    fn upstream_compressor_x2_gain(
+        dst: *mut f32,
+        src: *const f32,
+        c: *const CompressorX2,
+        count: usize,
+    );
+    fn upstream_gate_x1_gain(dst: *mut f32, src: *const f32, c: *const GateKnee, count: usize);
+    fn upstream_dexpander_x1_gain(
+        dst: *mut f32,
+        src: *const f32,
+        c: *const ExpanderKnee,
         count: usize,
     );
 }
@@ -736,6 +764,155 @@ fn bench_complex_mul(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_compressor_x2_gain(c: &mut Criterion) {
+    let mut group = c.benchmark_group("compressor_x2_gain");
+    let n = 4096;
+    let src = positive_noise(n);
+    let mut dst = vec![0.0f32; n];
+    let comp = CompressorX2 {
+        k: [
+            CompressorKnee {
+                start: 0.1,
+                end: 0.5,
+                gain: 1.0,
+                herm: [-0.5, 0.3, -0.1],
+                tilt: [-0.3, 0.1],
+            },
+            CompressorKnee {
+                start: 0.2,
+                end: 0.8,
+                gain: 1.0,
+                herm: [-0.4, 0.2, -0.05],
+                tilt: [-0.2, 0.05],
+            },
+        ],
+    };
+
+    group.bench_function("rust", |b| {
+        b.iter(|| {
+            lsp_dsp_lib::dynamics::compressor_x2_gain(black_box(&mut dst), black_box(&src), &comp);
+        });
+    });
+
+    #[cfg(feature = "cpp-ref")]
+    group.bench_function("cpp", |b| {
+        b.iter(|| unsafe {
+            native_compressor_x2_gain(
+                black_box(dst.as_mut_ptr()),
+                black_box(src.as_ptr()),
+                &comp,
+                n,
+            );
+        });
+    });
+
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("upstream", |b| {
+        b.iter(|| unsafe {
+            upstream_compressor_x2_gain(
+                black_box(dst.as_mut_ptr()),
+                black_box(src.as_ptr()),
+                &comp,
+                n,
+            );
+        });
+    });
+
+    group.finish();
+}
+
+fn bench_gate_x1_gain(c: &mut Criterion) {
+    let mut group = c.benchmark_group("gate_x1_gain");
+    let n = 4096;
+    let src = positive_noise(n);
+    let mut dst = vec![0.0f32; n];
+    let gate = GateKnee {
+        start: 0.1,
+        end: 0.5,
+        gain_start: 0.0,
+        gain_end: 1.0,
+        herm: [0.1, -0.3, 0.5, -0.2],
+    };
+
+    group.bench_function("rust", |b| {
+        b.iter(|| {
+            lsp_dsp_lib::dynamics::gate_x1_gain(black_box(&mut dst), black_box(&src), &gate);
+        });
+    });
+
+    #[cfg(feature = "cpp-ref")]
+    group.bench_function("cpp", |b| {
+        b.iter(|| unsafe {
+            native_gate_x1_gain(
+                black_box(dst.as_mut_ptr()),
+                black_box(src.as_ptr()),
+                &gate,
+                n,
+            );
+        });
+    });
+
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("upstream", |b| {
+        b.iter(|| unsafe {
+            upstream_gate_x1_gain(
+                black_box(dst.as_mut_ptr()),
+                black_box(src.as_ptr()),
+                &gate,
+                n,
+            );
+        });
+    });
+
+    group.finish();
+}
+
+fn bench_dexpander_x1_gain(c: &mut Criterion) {
+    let mut group = c.benchmark_group("dexpander_x1_gain");
+    let n = 4096;
+    let src = positive_noise(n);
+    let mut dst = vec![0.0f32; n];
+    let exp = ExpanderKnee {
+        start: 0.2,
+        end: 0.6,
+        threshold: 0.05,
+        herm: [-0.3, 0.15, -0.05],
+        tilt: [0.8, -0.5],
+    };
+
+    group.bench_function("rust", |b| {
+        b.iter(|| {
+            lsp_dsp_lib::dynamics::dexpander_x1_gain(black_box(&mut dst), black_box(&src), &exp);
+        });
+    });
+
+    #[cfg(feature = "cpp-ref")]
+    group.bench_function("cpp", |b| {
+        b.iter(|| unsafe {
+            native_dexpander_x1_gain(
+                black_box(dst.as_mut_ptr()),
+                black_box(src.as_ptr()),
+                &exp,
+                n,
+            );
+        });
+    });
+
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("upstream", |b| {
+        b.iter(|| unsafe {
+            upstream_dexpander_x1_gain(
+                black_box(dst.as_mut_ptr()),
+                black_box(src.as_ptr()),
+                &exp,
+                n,
+            );
+        });
+    });
+
+    group.finish();
+}
+
 fn bench_correlation(c: &mut Criterion) {
     let mut group = c.benchmark_group("correlation");
     let src_len = 512;
@@ -772,6 +949,9 @@ criterion_group!(
     bench_mix2,
     bench_lr_to_ms,
     bench_complex_mul,
+    bench_compressor_x2_gain,
+    bench_gate_x1_gain,
+    bench_dexpander_x1_gain,
     bench_correlation,
 );
 criterion_main!(benches);
