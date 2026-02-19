@@ -5,8 +5,13 @@
 //! Each benchmark group runs the same processing operation through both the
 //! Rust implementation and the C++ reference, enabling side-by-side throughput
 //! comparison via `cargo bench`.
+//!
+//! When built with `--features upstream-bench`, a third "upstream" column
+//! appears using the hand-tuned SIMD from lsp-plugins/lsp-dsp-lib.
 
 use std::hint::black_box;
+#[cfg(feature = "upstream-bench")]
+use std::mem::ManuallyDrop;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use lsp_dsp_units::dynamics::compressor::{Compressor, CompressorMode};
@@ -373,6 +378,82 @@ unsafe extern "C" {
     );
 }
 
+// ─── Upstream FFI (hand-tuned SIMD from lsp-plugins/lsp-dsp-lib) ────────
+
+// Biquad struct for upstream SIMD processing (64-byte aligned, matches biquad_t).
+#[cfg(feature = "upstream-bench")]
+#[repr(C)]
+struct RefBiquadX1 {
+    b0: f32,
+    b1: f32,
+    b2: f32,
+    a1: f32,
+    a2: f32,
+    p0: f32,
+    p1: f32,
+    p2: f32,
+}
+
+#[cfg(feature = "upstream-bench")]
+#[repr(C)]
+struct RefBiquadX8 {
+    b0: [f32; 8],
+    b1: [f32; 8],
+    b2: [f32; 8],
+    a1: [f32; 8],
+    a2: [f32; 8],
+}
+
+#[cfg(feature = "upstream-bench")]
+#[repr(C)]
+union RefBiquadCoeffs {
+    x1: ManuallyDrop<RefBiquadX1>,
+    x8: ManuallyDrop<RefBiquadX8>,
+}
+
+#[cfg(feature = "upstream-bench")]
+#[repr(C, align(64))]
+struct RefBiquad {
+    d: [f32; 16],
+    coeffs: RefBiquadCoeffs,
+    __pad: [f32; 8],
+}
+
+#[cfg(feature = "upstream-bench")]
+unsafe extern "C" {
+    // Dynamics processors (envelope + upstream SIMD gain kernel)
+    fn upstream_compressor_process(
+        state: *mut RefCompressorState,
+        gain_out: *mut f32,
+        env_out: *mut f32,
+        input: *const f32,
+        count: usize,
+    );
+
+    fn upstream_expander_process(
+        state: *mut RefExpanderState,
+        gain_out: *mut f32,
+        env_out: *mut f32,
+        input: *const f32,
+        count: usize,
+    );
+
+    // Biquad filter processing (upstream SIMD)
+    fn upstream_units_biquad_process_x1(
+        dst: *mut f32,
+        src: *const f32,
+        count: usize,
+        f: *mut RefBiquad,
+    );
+
+    fn upstream_units_biquad_process_x8(
+        dst: *mut f32,
+        src: *const f32,
+        count: usize,
+        f: *mut RefBiquad,
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════
 // Benchmark groups
 // ═════════════════════════════════════════════════════════════════════════
@@ -415,6 +496,32 @@ fn bench_compressor(c: &mut Criterion) {
         let mut env = vec![0.0f32; BUF_SIZE];
         b.iter(|| unsafe {
             native_compressor_process(
+                &mut state,
+                black_box(gain.as_mut_ptr()),
+                env.as_mut_ptr(),
+                black_box(input.as_ptr()),
+                BUF_SIZE,
+            );
+        });
+    });
+
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("upstream", |b| {
+        let mut state = unsafe {
+            let mut s: RefCompressorState = std::mem::zeroed();
+            native_compressor_init(&mut s, SAMPLE_RATE);
+            s.mode = 0; // Downward
+            s.attack_thresh = 0.5;
+            s.ratio = 4.0;
+            s.knee = 0.1;
+            s.attack = 10.0;
+            s.release = 100.0;
+            native_compressor_update(&mut s);
+            s
+        };
+        let mut env = vec![0.0f32; BUF_SIZE];
+        b.iter(|| unsafe {
+            upstream_compressor_process(
                 &mut state,
                 black_box(gain.as_mut_ptr()),
                 env.as_mut_ptr(),
@@ -522,6 +629,32 @@ fn bench_expander(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("upstream", |b| {
+        let mut state = unsafe {
+            let mut s: RefExpanderState = std::mem::zeroed();
+            native_expander_init(&mut s, SAMPLE_RATE);
+            s.mode = 0; // Downward
+            s.attack_thresh = 0.1;
+            s.ratio = 2.0;
+            s.knee = 0.1;
+            s.attack = 10.0;
+            s.release = 100.0;
+            native_expander_update(&mut s);
+            s
+        };
+        let mut env = vec![0.0f32; BUF_SIZE];
+        b.iter(|| unsafe {
+            upstream_expander_process(
+                &mut state,
+                black_box(gain.as_mut_ptr()),
+                env.as_mut_ptr(),
+                black_box(input.as_ptr()),
+                BUF_SIZE,
+            );
+        });
+    });
+
     group.finish();
 }
 
@@ -566,6 +699,45 @@ fn bench_filter_lowpass(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("upstream", |b| {
+        // Compute coefficients using the ref implementation, then copy into biquad_t
+        let ref_state = unsafe {
+            let mut s: RefFilterState = std::mem::zeroed();
+            native_filter_init(&mut s, SAMPLE_RATE);
+            s.filter_type = RefFilterType::Lowpass;
+            s.frequency = 1000.0;
+            s.q = std::f32::consts::FRAC_1_SQRT_2;
+            s.gain = 0.0;
+            native_filter_update(&mut s);
+            s
+        };
+        let mut bq = RefBiquad {
+            d: [0.0; 16],
+            coeffs: RefBiquadCoeffs {
+                x1: ManuallyDrop::new(RefBiquadX1 {
+                    b0: ref_state.b0,
+                    b1: ref_state.b1,
+                    b2: ref_state.b2,
+                    a1: ref_state.a1,
+                    a2: ref_state.a2,
+                    p0: 0.0,
+                    p1: 0.0,
+                    p2: 0.0,
+                }),
+            },
+            __pad: [0.0; 8],
+        };
+        b.iter(|| unsafe {
+            upstream_units_biquad_process_x1(
+                black_box(output.as_mut_ptr()),
+                black_box(input.as_ptr()),
+                BUF_SIZE,
+                &mut bq,
+            );
+        });
+    });
+
     group.finish();
 }
 
@@ -605,6 +777,62 @@ fn bench_butterworth_lp8(c: &mut Criterion) {
                 black_box(input.as_ptr()),
                 BUF_SIZE,
             );
+        });
+    });
+
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("upstream", |b| {
+        // Compute section coefficients using ref, then copy into biquad_t array
+        let ref_state = unsafe {
+            let mut s: RefButterworthState = std::mem::zeroed();
+            native_butterworth_init(&mut s, SAMPLE_RATE);
+            s.filter_type = RefButterworthType::Lowpass;
+            s.cutoff = 1000.0;
+            s.order = 8;
+            native_butterworth_update(&mut s);
+            s
+        };
+        let n_sections = ref_state.n_sections as usize;
+        let mut bqs: Vec<RefBiquad> = (0..n_sections)
+            .map(|i| {
+                let sec = &ref_state.sections[i];
+                RefBiquad {
+                    d: [0.0; 16],
+                    coeffs: RefBiquadCoeffs {
+                        x1: ManuallyDrop::new(RefBiquadX1 {
+                            b0: sec.b0,
+                            b1: sec.b1,
+                            b2: sec.b2,
+                            a1: sec.a1,
+                            a2: sec.a2,
+                            p0: 0.0,
+                            p1: 0.0,
+                            p2: 0.0,
+                        }),
+                    },
+                    __pad: [0.0; 8],
+                }
+            })
+            .collect();
+        let mut tmp = vec![0.0f32; BUF_SIZE];
+        b.iter(|| unsafe {
+            // First section: input -> output
+            upstream_units_biquad_process_x1(
+                black_box(output.as_mut_ptr()),
+                black_box(input.as_ptr()),
+                BUF_SIZE,
+                &mut bqs[0],
+            );
+            // Remaining sections: output -> tmp -> output
+            for si in 1..n_sections {
+                tmp.copy_from_slice(&output);
+                upstream_units_biquad_process_x1(
+                    output.as_mut_ptr(),
+                    tmp.as_ptr(),
+                    BUF_SIZE,
+                    &mut bqs[si],
+                );
+            }
         });
     });
 
@@ -678,6 +906,57 @@ fn bench_equalizer_8band(c: &mut Criterion) {
                 black_box(output.as_mut_ptr()),
                 black_box(input.as_ptr()),
                 BUF_SIZE,
+            );
+        });
+    });
+
+    #[cfg(feature = "upstream-bench")]
+    group.bench_function("upstream", |b| {
+        // Compute per-band coefficients using ref, then pack into a single
+        // biquad_t with x8 coefficients — exactly matching how Rust's
+        // FilterBank packs 8 bands into one biquad_process_x8 call.
+        let ref_state = unsafe {
+            let mut s: RefEqualizerState = std::mem::zeroed();
+            native_equalizer_init(&mut s, SAMPLE_RATE, 8);
+            for i in 0..8 {
+                s.bands[i].filter_type = native_types[i];
+                s.bands[i].frequency = freqs[i];
+                s.bands[i].q = std::f32::consts::FRAC_1_SQRT_2;
+                s.bands[i].gain = gains[i];
+                s.bands[i].enabled = 1;
+            }
+            native_equalizer_update(&mut s);
+            s
+        };
+        // Pack all 8 band coefficients into a single x8 biquad
+        let mut x8 = RefBiquadX8 {
+            b0: [0.0; 8],
+            b1: [0.0; 8],
+            b2: [0.0; 8],
+            a1: [0.0; 8],
+            a2: [0.0; 8],
+        };
+        for i in 0..8 {
+            let f = &ref_state.filters[i];
+            x8.b0[i] = f.b0;
+            x8.b1[i] = f.b1;
+            x8.b2[i] = f.b2;
+            x8.a1[i] = f.a1;
+            x8.a2[i] = f.a2;
+        }
+        let mut bq = RefBiquad {
+            d: [0.0; 16],
+            coeffs: RefBiquadCoeffs {
+                x8: ManuallyDrop::new(x8),
+            },
+            __pad: [0.0; 8],
+        };
+        b.iter(|| unsafe {
+            upstream_units_biquad_process_x8(
+                black_box(output.as_mut_ptr()),
+                black_box(input.as_ptr()),
+                BUF_SIZE,
+                &mut bq,
             );
         });
     });
