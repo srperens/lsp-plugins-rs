@@ -17,6 +17,9 @@ use lsp_dsp_units::filters::filter::Filter;
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 
+/// Maximum allowed ULP (units in last place) difference between Rust and C++.
+const MAX_ULPS: i32 = 0;
+
 // ---- FFI bindings to C++ reference implementations ----
 
 #[repr(C)]
@@ -378,7 +381,7 @@ fn ab_filter_lowpass_impulse() {
     );
     let input = gen_impulse(BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_lp_impulse", &rust, &cpp, 4);
+    assert_buffers_match("filter_lp_impulse", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -392,7 +395,7 @@ fn ab_filter_lowpass_dc() {
     );
     let input = gen_dc(1.0, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_lp_dc", &rust, &cpp, 4);
+    assert_buffers_match("filter_lp_dc", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -406,7 +409,7 @@ fn ab_filter_lowpass_sine_below_cutoff() {
     );
     let input = gen_sine(100.0, SAMPLE_RATE, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_lp_sine_below", &rust, &cpp, 4);
+    assert_buffers_match("filter_lp_sine_below", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -420,7 +423,7 @@ fn ab_filter_lowpass_sine_above_cutoff() {
     );
     let input = gen_sine(10000.0, SAMPLE_RATE, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_lp_sine_above", &rust, &cpp, 4);
+    assert_buffers_match("filter_lp_sine_above", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -434,7 +437,7 @@ fn ab_filter_lowpass_noise() {
     );
     let input = gen_test_signal(42, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_lp_noise", &rust, &cpp, 4);
+    assert_buffers_match("filter_lp_noise", &rust, &cpp, MAX_ULPS);
 }
 
 // ---- Highpass ----
@@ -450,7 +453,7 @@ fn ab_filter_highpass_impulse() {
     );
     let input = gen_impulse(BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_hp_impulse", &rust, &cpp, 4);
+    assert_buffers_match("filter_hp_impulse", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -458,7 +461,7 @@ fn ab_filter_highpass_noise() {
     let mut pair = FilterPair::new(FilterType::Highpass, 2000.0, 1.0, 0.0, SAMPLE_RATE);
     let input = gen_test_signal(77, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_hp_noise", &rust, &cpp, 4);
+    assert_buffers_match("filter_hp_noise", &rust, &cpp, MAX_ULPS);
 }
 
 // ---- Peaking ----
@@ -468,7 +471,7 @@ fn ab_filter_peaking_boost_impulse() {
     let mut pair = FilterPair::new(FilterType::Peaking, 2000.0, 1.0, 12.0, SAMPLE_RATE);
     let input = gen_impulse(BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_peak_boost_imp", &rust, &cpp, 4);
+    assert_buffers_match("filter_peak_boost_imp", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -476,7 +479,7 @@ fn ab_filter_peaking_cut_noise() {
     let mut pair = FilterPair::new(FilterType::Peaking, 1000.0, 2.0, -6.0, SAMPLE_RATE);
     let input = gen_test_signal(33, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_peak_cut_noise", &rust, &cpp, 4);
+    assert_buffers_match("filter_peak_cut_noise", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -484,7 +487,7 @@ fn ab_filter_peaking_sine_at_center() {
     let mut pair = FilterPair::new(FilterType::Peaking, 2000.0, 1.0, 12.0, SAMPLE_RATE);
     let input = gen_sine(2000.0, SAMPLE_RATE, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_peak_sine_ctr", &rust, &cpp, 4);
+    assert_buffers_match("filter_peak_sine_ctr", &rust, &cpp, MAX_ULPS);
 }
 
 // ---- Notch ----
@@ -494,7 +497,7 @@ fn ab_filter_notch_noise() {
     let mut pair = FilterPair::new(FilterType::Notch, 1000.0, 10.0, 0.0, SAMPLE_RATE);
     let input = gen_test_signal(88, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_notch_noise", &rust, &cpp, 4);
+    assert_buffers_match("filter_notch_noise", &rust, &cpp, MAX_ULPS);
 }
 
 // ---- Allpass ----
@@ -504,7 +507,7 @@ fn ab_filter_allpass_noise() {
     let mut pair = FilterPair::new(FilterType::Allpass, 3000.0, 1.0, 0.0, SAMPLE_RATE);
     let input = gen_test_signal(55, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_allpass_noise", &rust, &cpp, 4);
+    assert_buffers_match("filter_allpass_noise", &rust, &cpp, MAX_ULPS);
 }
 
 // ---- Bandpass ----
@@ -520,7 +523,7 @@ fn ab_filter_bandpass_skirt_noise() {
     );
     let input = gen_test_signal(111, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_bp_skirt_noise", &rust, &cpp, 4);
+    assert_buffers_match("filter_bp_skirt_noise", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -534,7 +537,7 @@ fn ab_filter_bandpass_peak_noise() {
     );
     let input = gen_test_signal(222, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_bp_peak_noise", &rust, &cpp, 4);
+    assert_buffers_match("filter_bp_peak_noise", &rust, &cpp, MAX_ULPS);
 }
 
 // ---- Shelves ----
@@ -550,7 +553,7 @@ fn ab_filter_lowshelf_boost() {
     );
     let input = gen_test_signal(44, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_loshelf_boost", &rust, &cpp, 4);
+    assert_buffers_match("filter_loshelf_boost", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -564,7 +567,7 @@ fn ab_filter_highshelf_cut() {
     );
     let input = gen_test_signal(66, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_hishelf_cut", &rust, &cpp, 4);
+    assert_buffers_match("filter_hishelf_cut", &rust, &cpp, MAX_ULPS);
 }
 
 // ---- Off ----
@@ -574,7 +577,7 @@ fn ab_filter_off_passthrough() {
     let mut pair = FilterPair::new(FilterType::Off, 1000.0, 1.0, 0.0, SAMPLE_RATE);
     let input = gen_test_signal(99, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_off_pass", &rust, &cpp, 4);
+    assert_buffers_match("filter_off_pass", &rust, &cpp, MAX_ULPS);
 }
 
 // ---- Multi-block (state continuity) ----
@@ -591,7 +594,7 @@ fn ab_filter_lowpass_multi_block() {
     let signal = gen_test_signal(123, BLOCK_SIZE * 4);
     for chunk in signal.chunks(256) {
         let (rust, cpp) = pair.process(chunk);
-        assert_buffers_match("filter_lp_multi", &rust, &cpp, 4);
+        assert_buffers_match("filter_lp_multi", &rust, &cpp, MAX_ULPS);
     }
 }
 
@@ -611,7 +614,7 @@ fn ab_filter_clear_and_reprocess() {
     // Reprocess
     let input2 = gen_test_signal(300, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input2);
-    assert_buffers_match("filter_clear_reprocess", &rust, &cpp, 4);
+    assert_buffers_match("filter_clear_reprocess", &rust, &cpp, MAX_ULPS);
 }
 
 // ---- Different sample rates ----
@@ -628,7 +631,7 @@ fn ab_filter_lowpass_44100() {
     );
     let input = gen_test_signal(400, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_lp_44100", &rust, &cpp, 4);
+    assert_buffers_match("filter_lp_44100", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -643,7 +646,7 @@ fn ab_filter_lowpass_96000() {
     );
     let input = gen_test_signal(500, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("filter_lp_96000", &rust, &cpp, 4);
+    assert_buffers_match("filter_lp_96000", &rust, &cpp, MAX_ULPS);
 }
 
 // ---- All filter types sweep ----
@@ -665,7 +668,7 @@ fn ab_filter_all_types_noise() {
     for (seed, (ft, gain)) in types.iter().enumerate() {
         let mut pair = FilterPair::new(*ft, 2000.0, 1.0, *gain, SAMPLE_RATE);
         let (rust, cpp) = pair.process(&input);
-        assert_buffers_match(&format!("filter_type_{seed}_{ft:?}"), &rust, &cpp, 4);
+        assert_buffers_match(&format!("filter_type_{seed}_{ft:?}"), &rust, &cpp, MAX_ULPS);
     }
 }
 
@@ -680,7 +683,7 @@ fn ab_butterworth_lowpass_order2_impulse() {
     let mut pair = ButterworthPair::new(ButterworthType::Lowpass, 1000.0, 2, SAMPLE_RATE);
     let input = gen_impulse(BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("bw_lp2_impulse", &rust, &cpp, 4);
+    assert_buffers_match("bw_lp2_impulse", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -688,7 +691,7 @@ fn ab_butterworth_lowpass_order4_noise() {
     let mut pair = ButterworthPair::new(ButterworthType::Lowpass, 2000.0, 4, SAMPLE_RATE);
     let input = gen_test_signal(42, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("bw_lp4_noise", &rust, &cpp, 4);
+    assert_buffers_match("bw_lp4_noise", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -697,7 +700,7 @@ fn ab_butterworth_lowpass_all_orders() {
     for order in 1..=8 {
         let mut pair = ButterworthPair::new(ButterworthType::Lowpass, 1000.0, order, SAMPLE_RATE);
         let (rust, cpp) = pair.process(&input);
-        assert_buffers_match(&format!("bw_lp_order{order}"), &rust, &cpp, 4);
+        assert_buffers_match(&format!("bw_lp_order{order}"), &rust, &cpp, MAX_ULPS);
     }
 }
 
@@ -706,7 +709,7 @@ fn ab_butterworth_lowpass_dc() {
     let mut pair = ButterworthPair::new(ButterworthType::Lowpass, 1000.0, 4, SAMPLE_RATE);
     let input = gen_dc(1.0, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("bw_lp4_dc", &rust, &cpp, 4);
+    assert_buffers_match("bw_lp4_dc", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -714,7 +717,7 @@ fn ab_butterworth_lowpass_sine() {
     let mut pair = ButterworthPair::new(ButterworthType::Lowpass, 2000.0, 4, SAMPLE_RATE);
     let input = gen_sine(200.0, SAMPLE_RATE, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("bw_lp4_sine", &rust, &cpp, 4);
+    assert_buffers_match("bw_lp4_sine", &rust, &cpp, MAX_ULPS);
 }
 
 // ---- Highpass ----
@@ -725,7 +728,7 @@ fn ab_butterworth_highpass_all_orders() {
     for order in 1..=8 {
         let mut pair = ButterworthPair::new(ButterworthType::Highpass, 1000.0, order, SAMPLE_RATE);
         let (rust, cpp) = pair.process(&input);
-        assert_buffers_match(&format!("bw_hp_order{order}"), &rust, &cpp, 4);
+        assert_buffers_match(&format!("bw_hp_order{order}"), &rust, &cpp, MAX_ULPS);
     }
 }
 
@@ -734,7 +737,7 @@ fn ab_butterworth_highpass_order6_noise() {
     let mut pair = ButterworthPair::new(ButterworthType::Highpass, 3000.0, 6, SAMPLE_RATE);
     let input = gen_test_signal(333, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("bw_hp6_noise", &rust, &cpp, 4);
+    assert_buffers_match("bw_hp6_noise", &rust, &cpp, MAX_ULPS);
 }
 
 // ---- Various cutoff frequencies ----
@@ -746,7 +749,7 @@ fn ab_butterworth_various_cutoffs() {
     for &cutoff in &cutoffs {
         let mut pair = ButterworthPair::new(ButterworthType::Lowpass, cutoff, 4, SAMPLE_RATE);
         let (rust, cpp) = pair.process(&input);
-        assert_buffers_match(&format!("bw_lp4_cutoff{cutoff}"), &rust, &cpp, 4);
+        assert_buffers_match(&format!("bw_lp4_cutoff{cutoff}"), &rust, &cpp, MAX_ULPS);
     }
 }
 
@@ -758,7 +761,7 @@ fn ab_butterworth_multi_block() {
     let signal = gen_test_signal(555, BLOCK_SIZE * 4);
     for chunk in signal.chunks(256) {
         let (rust, cpp) = pair.process(chunk);
-        assert_buffers_match("bw_lp4_multi", &rust, &cpp, 4);
+        assert_buffers_match("bw_lp4_multi", &rust, &cpp, MAX_ULPS);
     }
 }
 
@@ -775,7 +778,7 @@ fn ab_butterworth_clear_and_reprocess() {
 
     let input2 = gen_test_signal(700, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input2);
-    assert_buffers_match("bw_clear_reprocess", &rust, &cpp, 4);
+    assert_buffers_match("bw_clear_reprocess", &rust, &cpp, MAX_ULPS);
 }
 
 // ---- Different sample rates ----
@@ -786,7 +789,7 @@ fn ab_butterworth_sample_rates() {
     for &sr in &[44100.0, 48000.0, 96000.0] {
         let mut pair = ButterworthPair::new(ButterworthType::Lowpass, 1000.0, 4, sr);
         let (rust, cpp) = pair.process(&input);
-        assert_buffers_match(&format!("bw_lp4_sr{sr}"), &rust, &cpp, 4);
+        assert_buffers_match(&format!("bw_lp4_sr{sr}"), &rust, &cpp, MAX_ULPS);
     }
 }
 
@@ -797,7 +800,7 @@ fn ab_butterworth_order1_impulse() {
     let mut pair = ButterworthPair::new(ButterworthType::Lowpass, 1000.0, 1, SAMPLE_RATE);
     let input = gen_impulse(BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("bw_lp1_impulse", &rust, &cpp, 4);
+    assert_buffers_match("bw_lp1_impulse", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -805,7 +808,7 @@ fn ab_butterworth_order3_impulse() {
     let mut pair = ButterworthPair::new(ButterworthType::Lowpass, 1000.0, 3, SAMPLE_RATE);
     let input = gen_impulse(BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("bw_lp3_impulse", &rust, &cpp, 4);
+    assert_buffers_match("bw_lp3_impulse", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -813,7 +816,7 @@ fn ab_butterworth_order7_noise() {
     let mut pair = ButterworthPair::new(ButterworthType::Lowpass, 2000.0, 7, SAMPLE_RATE);
     let input = gen_test_signal(999, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("bw_lp7_noise", &rust, &cpp, 4);
+    assert_buffers_match("bw_lp7_noise", &rust, &cpp, MAX_ULPS);
 }
 
 // =========================================================================
@@ -826,7 +829,7 @@ fn ab_equalizer_all_off() {
     let mut pair = EqualizerPair::new(&bands, SAMPLE_RATE);
     let input = gen_test_signal(42, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("eq_all_off", &rust, &cpp, 4);
+    assert_buffers_match("eq_all_off", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -835,7 +838,7 @@ fn ab_equalizer_single_peaking() {
     let mut pair = EqualizerPair::new(&bands, SAMPLE_RATE);
     let input = gen_test_signal(100, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("eq_single_peak", &rust, &cpp, 4);
+    assert_buffers_match("eq_single_peak", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -847,7 +850,7 @@ fn ab_equalizer_two_peaking() {
     let mut pair = EqualizerPair::new(&bands, SAMPLE_RATE);
     let input = gen_test_signal(200, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("eq_two_peak", &rust, &cpp, 4);
+    assert_buffers_match("eq_two_peak", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -872,7 +875,7 @@ fn ab_equalizer_shelf_plus_peaking() {
     let mut pair = EqualizerPair::new(&bands, SAMPLE_RATE);
     let input = gen_test_signal(300, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("eq_shelf_peak", &rust, &cpp, 4);
+    assert_buffers_match("eq_shelf_peak", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -884,7 +887,7 @@ fn ab_equalizer_disabled_band() {
     let mut pair = EqualizerPair::new(&bands, SAMPLE_RATE);
     let input = gen_test_signal(400, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("eq_disabled_band", &rust, &cpp, 4);
+    assert_buffers_match("eq_disabled_band", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -910,7 +913,7 @@ fn ab_equalizer_four_band_typical() {
     let mut pair = EqualizerPair::new(&bands, SAMPLE_RATE);
     let input = gen_test_signal(500, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("eq_4band_typical", &rust, &cpp, 4);
+    assert_buffers_match("eq_4band_typical", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -929,7 +932,7 @@ fn ab_equalizer_multi_block() {
     let signal = gen_test_signal(600, BLOCK_SIZE * 4);
     for chunk in signal.chunks(256) {
         let (rust, cpp) = pair.process(chunk);
-        assert_buffers_match("eq_multi_block", &rust, &cpp, 4);
+        assert_buffers_match("eq_multi_block", &rust, &cpp, MAX_ULPS);
     }
 }
 
@@ -948,7 +951,7 @@ fn ab_equalizer_clear_and_reprocess() {
 
     let input2 = gen_test_signal(800, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input2);
-    assert_buffers_match("eq_clear_reprocess", &rust, &cpp, 4);
+    assert_buffers_match("eq_clear_reprocess", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -978,7 +981,7 @@ fn ab_equalizer_sine_sweep() {
         pair.clear();
         let input = gen_sine(freq, SAMPLE_RATE, BLOCK_SIZE);
         let (rust, cpp) = pair.process(&input);
-        assert_buffers_match(&format!("eq_sine_{freq}Hz"), &rust, &cpp, 4);
+        assert_buffers_match(&format!("eq_sine_{freq}Hz"), &rust, &cpp, MAX_ULPS);
     }
 }
 
@@ -992,7 +995,7 @@ fn ab_equalizer_all_disabled() {
     let mut pair = EqualizerPair::new(&bands, SAMPLE_RATE);
     let input = gen_test_signal(900, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("eq_all_disabled", &rust, &cpp, 4);
+    assert_buffers_match("eq_all_disabled", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -1017,5 +1020,5 @@ fn ab_equalizer_impulse() {
     let mut pair = EqualizerPair::new(&bands, SAMPLE_RATE);
     let input = gen_impulse(BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("eq_impulse", &rust, &cpp, 4);
+    assert_buffers_match("eq_impulse", &rust, &cpp, MAX_ULPS);
 }

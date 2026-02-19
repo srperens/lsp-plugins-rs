@@ -14,6 +14,9 @@ use lsp_dsp_units::dynamics::gate::Gate;
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 
+/// Maximum allowed ULP (units in last place) difference between Rust and C++.
+const MAX_ULPS: i32 = 0;
+
 // ─── FFI bindings to C++ reference implementations ──────────────────────
 
 #[repr(C)]
@@ -462,7 +465,7 @@ fn ab_compressor_downward_constant_above_threshold() {
     );
     let input = gen_constant_signal(0.8, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("comp_down_const_above", &rust, &cpp, 4);
+    assert_buffers_match("comp_down_const_above", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -480,7 +483,7 @@ fn ab_compressor_downward_ramp() {
     );
     let input = gen_ramp_signal(BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("comp_down_ramp", &rust, &cpp, 4);
+    assert_buffers_match("comp_down_ramp", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -498,7 +501,7 @@ fn ab_compressor_downward_noise() {
     );
     let input = gen_test_signal(42, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("comp_down_noise", &rust, &cpp, 4);
+    assert_buffers_match("comp_down_noise", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -516,7 +519,7 @@ fn ab_compressor_downward_silence() {
     );
     let input = gen_constant_signal(0.0, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("comp_down_silence", &rust, &cpp, 4);
+    assert_buffers_match("comp_down_silence", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -534,7 +537,7 @@ fn ab_compressor_downward_with_hold() {
     );
     let input = gen_burst_signal(BLOCK_SIZE, 256);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("comp_down_hold", &rust, &cpp, 4);
+    assert_buffers_match("comp_down_hold", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -552,7 +555,7 @@ fn ab_compressor_downward_high_ratio() {
     );
     let input = gen_test_signal(99, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("comp_down_high_ratio", &rust, &cpp, 4);
+    assert_buffers_match("comp_down_high_ratio", &rust, &cpp, MAX_ULPS);
 }
 
 // ─── Upward compressor ──────────────────────────────────────────────────
@@ -572,7 +575,7 @@ fn ab_compressor_upward_constant_above_threshold() {
     );
     let input = gen_constant_signal(0.8, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("comp_up_const_above", &rust, &cpp, 4);
+    assert_buffers_match("comp_up_const_above", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -590,7 +593,7 @@ fn ab_compressor_upward_ramp() {
     );
     let input = gen_ramp_signal(BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("comp_up_ramp", &rust, &cpp, 4);
+    assert_buffers_match("comp_up_ramp", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -608,7 +611,7 @@ fn ab_compressor_upward_noise() {
     );
     let input = gen_test_signal(77, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("comp_up_noise", &rust, &cpp, 4);
+    assert_buffers_match("comp_up_noise", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -627,7 +630,7 @@ fn ab_compressor_upward_below_threshold() {
     // Low level signal -- upward compressor should boost
     let input = gen_constant_signal(0.05, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("comp_up_below_thresh", &rust, &cpp, 4);
+    assert_buffers_match("comp_up_below_thresh", &rust, &cpp, MAX_ULPS);
 }
 
 // ─── Boosting compressor ────────────────────────────────────────────────
@@ -647,7 +650,7 @@ fn ab_compressor_boosting_constant_above_threshold() {
     );
     let input = gen_constant_signal(0.8, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("comp_boost_const_above", &rust, &cpp, 4);
+    assert_buffers_match("comp_boost_const_above", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -665,7 +668,7 @@ fn ab_compressor_boosting_ramp() {
     );
     let input = gen_ramp_signal(BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("comp_boost_ramp", &rust, &cpp, 4);
+    assert_buffers_match("comp_boost_ramp", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -683,7 +686,7 @@ fn ab_compressor_boosting_noise() {
     );
     let input = gen_test_signal(55, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("comp_boost_noise", &rust, &cpp, 4);
+    assert_buffers_match("comp_boost_noise", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -702,7 +705,7 @@ fn ab_compressor_boosting_low_signal() {
     // Signal below boost threshold -- should be boosted
     let input = gen_constant_signal(0.05, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("comp_boost_low", &rust, &cpp, 4);
+    assert_buffers_match("comp_boost_low", &rust, &cpp, MAX_ULPS);
 }
 
 // ─── Compressor multi-block (state continuity) ──────────────────────────
@@ -725,7 +728,7 @@ fn ab_compressor_downward_multi_block() {
     let full_signal = gen_test_signal(123, BLOCK_SIZE * 4);
     for chunk in full_signal.chunks(256) {
         let (rust, cpp) = pair.process(chunk);
-        assert_buffers_match("comp_down_multi_block", &rust, &cpp, 4);
+        assert_buffers_match("comp_down_multi_block", &rust, &cpp, MAX_ULPS);
     }
 }
 
@@ -751,7 +754,7 @@ fn ab_compressor_clear_and_reprocess() {
     pair.clear();
     let input2 = gen_test_signal(200, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input2);
-    assert_buffers_match("comp_clear_reprocess", &rust, &cpp, 4);
+    assert_buffers_match("comp_clear_reprocess", &rust, &cpp, MAX_ULPS);
 }
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -773,7 +776,7 @@ fn ab_gate_crossing_threshold() {
     input.extend(gen_constant_signal(0.5, 512));
     input.extend(gen_constant_signal(0.01, 1024));
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("gate_crossing", &rust, &cpp, 4);
+    assert_buffers_match("gate_crossing", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -781,7 +784,7 @@ fn ab_gate_silence() {
     let mut pair = GatePair::new(0.1, 2.0, 0.01, 5.0, 50.0, 0.0);
     let input = gen_constant_signal(0.0, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("gate_silence", &rust, &cpp, 4);
+    assert_buffers_match("gate_silence", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -789,7 +792,7 @@ fn ab_gate_full_scale() {
     let mut pair = GatePair::new(0.1, 2.0, 0.01, 5.0, 50.0, 0.0);
     let input = gen_constant_signal(1.0, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("gate_full_scale", &rust, &cpp, 4);
+    assert_buffers_match("gate_full_scale", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -800,7 +803,7 @@ fn ab_gate_hold_time() {
     // Burst signal to exercise hold behavior
     let input = gen_burst_signal(BLOCK_SIZE * 2, 256);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("gate_hold_time", &rust, &cpp, 4);
+    assert_buffers_match("gate_hold_time", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -808,7 +811,7 @@ fn ab_gate_noise() {
     let mut pair = GatePair::new(0.1, 2.0, 0.01, 5.0, 50.0, 0.0);
     let input = gen_test_signal(33, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("gate_noise", &rust, &cpp, 4);
+    assert_buffers_match("gate_noise", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -819,7 +822,7 @@ fn ab_gate_partial_reduction() {
     );
     let input = gen_test_signal(44, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("gate_partial_reduction", &rust, &cpp, 4);
+    assert_buffers_match("gate_partial_reduction", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -830,7 +833,7 @@ fn ab_gate_wide_zone() {
     );
     let input = gen_test_signal(88, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("gate_wide_zone", &rust, &cpp, 4);
+    assert_buffers_match("gate_wide_zone", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -840,7 +843,7 @@ fn ab_gate_multi_block() {
     let full_signal = gen_test_signal(321, BLOCK_SIZE * 4);
     for chunk in full_signal.chunks(256) {
         let (rust, cpp) = pair.process(chunk);
-        assert_buffers_match("gate_multi_block", &rust, &cpp, 4);
+        assert_buffers_match("gate_multi_block", &rust, &cpp, MAX_ULPS);
     }
 }
 
@@ -854,7 +857,7 @@ fn ab_gate_clear_and_reprocess() {
     pair.clear();
     let input2 = gen_test_signal(444, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input2);
-    assert_buffers_match("gate_clear_reprocess", &rust, &cpp, 4);
+    assert_buffers_match("gate_clear_reprocess", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -867,7 +870,7 @@ fn ab_gate_fast_attack() {
     let mut input = gen_constant_signal(0.0, 512);
     input.extend(gen_constant_signal(0.8, 1536));
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("gate_fast_attack", &rust, &cpp, 4);
+    assert_buffers_match("gate_fast_attack", &rust, &cpp, MAX_ULPS);
 }
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -891,7 +894,7 @@ fn ab_expander_downward_below_threshold() {
     // Signal below threshold -- expansion should be active
     let input = gen_constant_signal(0.1, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("exp_down_below_thresh", &rust, &cpp, 4);
+    assert_buffers_match("exp_down_below_thresh", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -909,7 +912,7 @@ fn ab_expander_downward_above_threshold() {
     // Signal above threshold -- no expansion
     let input = gen_constant_signal(0.8, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("exp_down_above_thresh", &rust, &cpp, 4);
+    assert_buffers_match("exp_down_above_thresh", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -926,7 +929,7 @@ fn ab_expander_downward_ramp() {
     );
     let input = gen_ramp_signal(BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("exp_down_ramp", &rust, &cpp, 4);
+    assert_buffers_match("exp_down_ramp", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -943,7 +946,7 @@ fn ab_expander_downward_noise() {
     );
     let input = gen_test_signal(66, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("exp_down_noise", &rust, &cpp, 4);
+    assert_buffers_match("exp_down_noise", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -960,7 +963,7 @@ fn ab_expander_downward_silence() {
     );
     let input = gen_constant_signal(0.0, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("exp_down_silence", &rust, &cpp, 4);
+    assert_buffers_match("exp_down_silence", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -972,7 +975,7 @@ fn ab_expander_downward_varying() {
     input.extend(gen_constant_signal(0.05, 512));
     input.extend(gen_constant_signal(0.9, 512));
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("exp_down_varying", &rust, &cpp, 4);
+    assert_buffers_match("exp_down_varying", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -989,7 +992,7 @@ fn ab_expander_downward_with_hold() {
     );
     let input = gen_burst_signal(BLOCK_SIZE * 2, 256);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("exp_down_hold", &rust, &cpp, 4);
+    assert_buffers_match("exp_down_hold", &rust, &cpp, MAX_ULPS);
 }
 
 // ─── Upward expander ────────────────────────────────────────────────────
@@ -1000,7 +1003,7 @@ fn ab_expander_upward_above_threshold() {
     // Signal above threshold -- upward expansion should boost
     let input = gen_constant_signal(0.7, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("exp_up_above_thresh", &rust, &cpp, 4);
+    assert_buffers_match("exp_up_above_thresh", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -1009,7 +1012,7 @@ fn ab_expander_upward_below_threshold() {
     // Signal below threshold -- limited
     let input = gen_constant_signal(0.1, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("exp_up_below_thresh", &rust, &cpp, 4);
+    assert_buffers_match("exp_up_below_thresh", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -1017,7 +1020,7 @@ fn ab_expander_upward_ramp() {
     let mut pair = ExpanderPair::new(ExpanderMode::Upward, 0.3, 0.15, 2.0, 0.1, 10.0, 100.0, 0.0);
     let input = gen_ramp_signal(BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("exp_up_ramp", &rust, &cpp, 4);
+    assert_buffers_match("exp_up_ramp", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -1025,7 +1028,7 @@ fn ab_expander_upward_noise() {
     let mut pair = ExpanderPair::new(ExpanderMode::Upward, 0.3, 0.15, 2.0, 0.1, 10.0, 100.0, 0.0);
     let input = gen_test_signal(111, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("exp_up_noise", &rust, &cpp, 4);
+    assert_buffers_match("exp_up_noise", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -1036,7 +1039,7 @@ fn ab_expander_upward_varying() {
     input.extend(gen_constant_signal(0.8, 512));
     input.extend(gen_constant_signal(0.2, 512));
     let (rust, cpp) = pair.process(&input);
-    assert_buffers_match("exp_up_varying", &rust, &cpp, 4);
+    assert_buffers_match("exp_up_varying", &rust, &cpp, MAX_ULPS);
 }
 
 // ─── Expander multi-block and clear ─────────────────────────────────────
@@ -1057,7 +1060,7 @@ fn ab_expander_downward_multi_block() {
     let full_signal = gen_test_signal(222, BLOCK_SIZE * 4);
     for chunk in full_signal.chunks(256) {
         let (rust, cpp) = pair.process(chunk);
-        assert_buffers_match("exp_down_multi_block", &rust, &cpp, 4);
+        assert_buffers_match("exp_down_multi_block", &rust, &cpp, MAX_ULPS);
     }
 }
 
@@ -1080,7 +1083,7 @@ fn ab_expander_clear_and_reprocess() {
     pair.clear();
     let input2 = gen_test_signal(333, BLOCK_SIZE);
     let (rust, cpp) = pair.process(&input2);
-    assert_buffers_match("exp_clear_reprocess", &rust, &cpp, 4);
+    assert_buffers_match("exp_clear_reprocess", &rust, &cpp, MAX_ULPS);
 }
 
 #[test]
@@ -1090,6 +1093,6 @@ fn ab_expander_upward_multi_block() {
     let full_signal = gen_test_signal(555, BLOCK_SIZE * 4);
     for chunk in full_signal.chunks(512) {
         let (rust, cpp) = pair.process(chunk);
-        assert_buffers_match("exp_up_multi_block", &rust, &cpp, 4);
+        assert_buffers_match("exp_up_multi_block", &rust, &cpp, MAX_ULPS);
     }
 }

@@ -17,6 +17,9 @@ use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use std::f32::consts::PI;
 
+/// Maximum allowed ULP (units in last place) difference between Rust and C++.
+const MAX_ULPS: i32 = 0;
+
 // ─── FFI bindings to C++ reference implementations ──────────────────────
 
 #[repr(C)]
@@ -495,7 +498,7 @@ fn ab_peak_meter_constant_signal() {
     let mut pair = PeakMeterPair::new(SAMPLE_RATE, 500.0, 20.0);
     let input = gen_constant_signal(0.8, BLOCK_SIZE);
     pair.process(&input);
-    pair.assert_match("peak_constant", 4);
+    pair.assert_match("peak_constant", MAX_ULPS);
 }
 
 #[test]
@@ -503,7 +506,7 @@ fn ab_peak_meter_ramp() {
     let mut pair = PeakMeterPair::new(SAMPLE_RATE, 500.0, 20.0);
     let input = gen_ramp_signal(BLOCK_SIZE);
     pair.process(&input);
-    pair.assert_match("peak_ramp", 4);
+    pair.assert_match("peak_ramp", MAX_ULPS);
 }
 
 #[test]
@@ -511,7 +514,7 @@ fn ab_peak_meter_noise() {
     let mut pair = PeakMeterPair::new(SAMPLE_RATE, 500.0, 20.0);
     let input = gen_test_signal(42, BLOCK_SIZE);
     pair.process(&input);
-    pair.assert_match("peak_noise", 4);
+    pair.assert_match("peak_noise", MAX_ULPS);
 }
 
 #[test]
@@ -519,7 +522,7 @@ fn ab_peak_meter_silence() {
     let mut pair = PeakMeterPair::new(SAMPLE_RATE, 500.0, 20.0);
     let input = gen_constant_signal(0.0, BLOCK_SIZE);
     pair.process(&input);
-    pair.assert_match("peak_silence", 4);
+    pair.assert_match("peak_silence", MAX_ULPS);
 }
 
 #[test]
@@ -527,7 +530,7 @@ fn ab_peak_meter_burst() {
     let mut pair = PeakMeterPair::new(SAMPLE_RATE, 200.0, 40.0);
     let input = gen_burst_signal(BLOCK_SIZE * 2, 256);
     pair.process(&input);
-    pair.assert_match("peak_burst", 4);
+    pair.assert_match("peak_burst", MAX_ULPS);
 }
 
 #[test]
@@ -537,7 +540,7 @@ fn ab_peak_meter_decay() {
     let mut input = gen_constant_signal(1.0, 1);
     input.extend(gen_constant_signal(0.0, 48000));
     pair.process(&input);
-    pair.assert_match("peak_decay", 4);
+    pair.assert_match("peak_decay", MAX_ULPS);
 }
 
 #[test]
@@ -548,12 +551,12 @@ fn ab_peak_meter_hold_and_decay() {
     // Process during hold (4800 samples at 48kHz for 100ms)
     input.extend(gen_constant_signal(0.0, 4000));
     pair.process(&input);
-    pair.assert_match("peak_hold_during", 4);
+    pair.assert_match("peak_hold_during", MAX_ULPS);
 
     // Continue past hold into decay
     let input2 = gen_constant_signal(0.0, 24000);
     pair.process(&input2);
-    pair.assert_match("peak_hold_and_decay", 4);
+    pair.assert_match("peak_hold_and_decay", MAX_ULPS);
 }
 
 #[test]
@@ -563,7 +566,7 @@ fn ab_peak_meter_multi_block() {
     for chunk in signal.chunks(256) {
         pair.process(chunk);
     }
-    pair.assert_match("peak_multi_block", 4);
+    pair.assert_match("peak_multi_block", MAX_ULPS);
 }
 
 #[test]
@@ -575,7 +578,7 @@ fn ab_peak_meter_reset_and_reprocess() {
     pair.reset();
     let input2 = gen_test_signal(200, BLOCK_SIZE);
     pair.process(&input2);
-    pair.assert_match("peak_reset_reprocess", 4);
+    pair.assert_match("peak_reset_reprocess", MAX_ULPS);
 }
 
 #[test]
@@ -583,7 +586,7 @@ fn ab_peak_meter_sine() {
     let mut pair = PeakMeterPair::new(SAMPLE_RATE, 500.0, 20.0);
     let input = gen_sine(1000.0, SAMPLE_RATE, BLOCK_SIZE, 0.7);
     pair.process(&input);
-    pair.assert_match("peak_sine", 4);
+    pair.assert_match("peak_sine", MAX_ULPS);
 }
 
 #[test]
@@ -592,7 +595,7 @@ fn ab_peak_meter_no_hold() {
     let mut input = gen_constant_signal(1.0, 1);
     input.extend(gen_constant_signal(0.0, 24000));
     pair.process(&input);
-    pair.assert_match("peak_no_hold", 4);
+    pair.assert_match("peak_no_hold", MAX_ULPS);
 }
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -604,7 +607,7 @@ fn ab_true_peak_silence() {
     let mut pair = TruePeakMeterPair::new();
     let input = gen_constant_signal(0.0, BLOCK_SIZE);
     pair.process(&input);
-    pair.assert_match("tp_silence", 4);
+    pair.assert_match("tp_silence", MAX_ULPS);
 }
 
 #[test]
@@ -612,7 +615,7 @@ fn ab_true_peak_dc() {
     let mut pair = TruePeakMeterPair::new();
     let input = gen_constant_signal(0.6, 200);
     pair.process(&input);
-    pair.assert_match("tp_dc", 4);
+    pair.assert_match("tp_dc", MAX_ULPS);
 }
 
 #[test]
@@ -620,7 +623,7 @@ fn ab_true_peak_sine_1khz() {
     let mut pair = TruePeakMeterPair::new();
     let input = gen_sine(1000.0, SAMPLE_RATE, 4800, 1.0);
     pair.process(&input);
-    pair.assert_match("tp_sine_1khz", 4);
+    pair.assert_match("tp_sine_1khz", MAX_ULPS);
 }
 
 #[test]
@@ -628,7 +631,7 @@ fn ab_true_peak_sine_997hz() {
     let mut pair = TruePeakMeterPair::new();
     let input = gen_sine(997.0, SAMPLE_RATE, 48000, 1.0);
     pair.process(&input);
-    pair.assert_match("tp_sine_997hz", 4);
+    pair.assert_match("tp_sine_997hz", MAX_ULPS);
 }
 
 #[test]
@@ -636,7 +639,7 @@ fn ab_true_peak_noise() {
     let mut pair = TruePeakMeterPair::new();
     let input = gen_test_signal(77, BLOCK_SIZE);
     pair.process(&input);
-    pair.assert_match("tp_noise", 4);
+    pair.assert_match("tp_noise", MAX_ULPS);
 }
 
 #[test]
@@ -644,7 +647,7 @@ fn ab_true_peak_ramp() {
     let mut pair = TruePeakMeterPair::new();
     let input = gen_ramp_signal(BLOCK_SIZE);
     pair.process(&input);
-    pair.assert_match("tp_ramp", 4);
+    pair.assert_match("tp_ramp", MAX_ULPS);
 }
 
 #[test]
@@ -653,7 +656,7 @@ fn ab_true_peak_step_response() {
     let mut input = gen_constant_signal(0.0, 50);
     input.extend(gen_constant_signal(0.9, 200));
     pair.process(&input);
-    pair.assert_match("tp_step", 4);
+    pair.assert_match("tp_step", MAX_ULPS);
 }
 
 #[test]
@@ -661,7 +664,7 @@ fn ab_true_peak_negative() {
     let mut pair = TruePeakMeterPair::new();
     let input = gen_constant_signal(-0.8, 200);
     pair.process(&input);
-    pair.assert_match("tp_negative", 4);
+    pair.assert_match("tp_negative", MAX_ULPS);
 }
 
 #[test]
@@ -671,7 +674,7 @@ fn ab_true_peak_multi_block() {
     for chunk in signal.chunks(256) {
         pair.process(chunk);
     }
-    pair.assert_match("tp_multi_block", 4);
+    pair.assert_match("tp_multi_block", MAX_ULPS);
 }
 
 #[test]
@@ -683,7 +686,7 @@ fn ab_true_peak_clear_and_reprocess() {
     pair.clear();
     let input2 = gen_sine(440.0, SAMPLE_RATE, BLOCK_SIZE, 0.5);
     pair.process(&input2);
-    pair.assert_match("tp_clear_reprocess", 4);
+    pair.assert_match("tp_clear_reprocess", MAX_ULPS);
 }
 
 #[test]
@@ -691,7 +694,7 @@ fn ab_true_peak_high_freq() {
     let mut pair = TruePeakMeterPair::new();
     let input = gen_sine(15000.0, SAMPLE_RATE, 4800, 0.8);
     pair.process(&input);
-    pair.assert_match("tp_high_freq", 4);
+    pair.assert_match("tp_high_freq", MAX_ULPS);
 }
 
 #[test]
@@ -701,7 +704,7 @@ fn ab_true_peak_impulse() {
     input[50] = 0.75;
     input.extend(gen_constant_signal(0.0, 100));
     pair.process(&input);
-    pair.assert_match("tp_impulse", 4);
+    pair.assert_match("tp_impulse", MAX_ULPS);
 }
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -713,7 +716,7 @@ fn ab_lufs_silence_mono() {
     let mut pair = LufsMeterPair::new(SAMPLE_RATE, 1);
     let silence = gen_constant_signal(0.0, 96000);
     pair.process(&[&silence]);
-    pair.assert_all_match("lufs_silence_mono", 4);
+    pair.assert_all_match("lufs_silence_mono", MAX_ULPS);
 }
 
 #[test]
@@ -721,7 +724,7 @@ fn ab_lufs_1khz_mono() {
     let mut pair = LufsMeterPair::new(SAMPLE_RATE, 1);
     let signal = gen_sine(1000.0, SAMPLE_RATE, 96000, 1.0);
     pair.process(&[&signal]);
-    pair.assert_all_match("lufs_1khz_mono", 4);
+    pair.assert_all_match("lufs_1khz_mono", MAX_ULPS);
 }
 
 #[test]
@@ -729,7 +732,7 @@ fn ab_lufs_1khz_stereo() {
     let mut pair = LufsMeterPair::new(SAMPLE_RATE, 2);
     let signal = gen_sine(1000.0, SAMPLE_RATE, 96000, 0.5);
     pair.process(&[&signal, &signal]);
-    pair.assert_all_match("lufs_1khz_stereo", 4);
+    pair.assert_all_match("lufs_1khz_stereo", MAX_ULPS);
 }
 
 #[test]
@@ -737,7 +740,7 @@ fn ab_lufs_noise_mono() {
     let mut pair = LufsMeterPair::new(SAMPLE_RATE, 1);
     let signal = gen_test_signal(42, 96000);
     pair.process(&[&signal]);
-    pair.assert_all_match("lufs_noise_mono", 4);
+    pair.assert_all_match("lufs_noise_mono", MAX_ULPS);
 }
 
 #[test]
@@ -746,7 +749,7 @@ fn ab_lufs_noise_stereo() {
     let left = gen_test_signal(10, 96000);
     let right = gen_test_signal(20, 96000);
     pair.process(&[&left, &right]);
-    pair.assert_all_match("lufs_noise_stereo", 4);
+    pair.assert_all_match("lufs_noise_stereo", MAX_ULPS);
 }
 
 #[test]
@@ -754,7 +757,7 @@ fn ab_lufs_low_level() {
     let mut pair = LufsMeterPair::new(SAMPLE_RATE, 1);
     let signal = gen_sine(1000.0, SAMPLE_RATE, 96000, 0.001);
     pair.process(&[&signal]);
-    pair.assert_all_match("lufs_low_level", 4);
+    pair.assert_all_match("lufs_low_level", MAX_ULPS);
 }
 
 #[test]
@@ -765,7 +768,7 @@ fn ab_lufs_multi_block() {
     for chunk in signal.chunks(4800) {
         pair.process(&[chunk]);
     }
-    pair.assert_all_match("lufs_multi_block", 4);
+    pair.assert_all_match("lufs_multi_block", MAX_ULPS);
 }
 
 #[test]
@@ -777,7 +780,7 @@ fn ab_lufs_reset_and_reprocess() {
     pair.reset();
     let signal2 = gen_sine(1000.0, SAMPLE_RATE, 96000, 0.1);
     pair.process(&[&signal2]);
-    pair.assert_all_match("lufs_reset_reprocess", 4);
+    pair.assert_all_match("lufs_reset_reprocess", MAX_ULPS);
 }
 
 #[test]
@@ -787,7 +790,7 @@ fn ab_lufs_loud_then_quiet() {
     pair.process(&[&loud]);
     let quiet = gen_sine(1000.0, SAMPLE_RATE, 96000, 0.00001);
     pair.process(&[&quiet]);
-    pair.assert_all_match("lufs_loud_then_quiet", 4);
+    pair.assert_all_match("lufs_loud_then_quiet", MAX_ULPS);
 }
 
 #[test]
@@ -796,8 +799,8 @@ fn ab_lufs_short_term_window() {
     let mut pair = LufsMeterPair::new(SAMPLE_RATE, 1);
     let signal = gen_sine(1000.0, SAMPLE_RATE, 192000, 0.5);
     pair.process(&[&signal]);
-    pair.assert_short_term_match("lufs_short_term", 4);
-    pair.assert_momentary_match("lufs_short_term", 4);
+    pair.assert_short_term_match("lufs_short_term", MAX_ULPS);
+    pair.assert_momentary_match("lufs_short_term", MAX_ULPS);
 }
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -809,7 +812,7 @@ fn ab_correlometer_identical_signals() {
     let mut pair = CorrelometerPair::new(SAMPLE_RATE, 300.0);
     let sig = gen_sine(1000.0, SAMPLE_RATE, 48000, 0.7);
     pair.process(&sig, &sig);
-    pair.assert_match("corr_identical", 4);
+    pair.assert_match("corr_identical", MAX_ULPS);
 }
 
 #[test]
@@ -818,7 +821,7 @@ fn ab_correlometer_inverted_signals() {
     let sig = gen_sine(1000.0, SAMPLE_RATE, 48000, 0.7);
     let inv: Vec<f32> = sig.iter().map(|&s| -s).collect();
     pair.process(&sig, &inv);
-    pair.assert_match("corr_inverted", 4);
+    pair.assert_match("corr_inverted", MAX_ULPS);
 }
 
 #[test]
@@ -826,7 +829,7 @@ fn ab_correlometer_silence() {
     let mut pair = CorrelometerPair::new(SAMPLE_RATE, 300.0);
     let silence = gen_constant_signal(0.0, 48000);
     pair.process(&silence, &silence);
-    pair.assert_match("corr_silence", 4);
+    pair.assert_match("corr_silence", MAX_ULPS);
 }
 
 #[test]
@@ -834,7 +837,7 @@ fn ab_correlometer_noise() {
     let mut pair = CorrelometerPair::new(SAMPLE_RATE, 300.0);
     let (left, right) = gen_stereo_signal(10, 20, 48000);
     pair.process(&left, &right);
-    pair.assert_match("corr_noise", 4);
+    pair.assert_match("corr_noise", MAX_ULPS);
 }
 
 #[test]
@@ -843,7 +846,7 @@ fn ab_correlometer_dc() {
     let left = gen_constant_signal(0.5, 48000);
     let right = gen_constant_signal(0.3, 48000);
     pair.process(&left, &right);
-    pair.assert_match("corr_dc", 4);
+    pair.assert_match("corr_dc", MAX_ULPS);
 }
 
 #[test]
@@ -853,7 +856,7 @@ fn ab_correlometer_panned_mono() {
     let left: Vec<f32> = sig.iter().map(|&s| s * 0.7).collect();
     let right: Vec<f32> = sig.iter().map(|&s| s * 0.3).collect();
     pair.process(&left, &right);
-    pair.assert_match("corr_panned_mono", 4);
+    pair.assert_match("corr_panned_mono", MAX_ULPS);
 }
 
 #[test]
@@ -863,7 +866,7 @@ fn ab_correlometer_multi_block() {
     for (l_chunk, r_chunk) in left.chunks(256).zip(right.chunks(256)) {
         pair.process(l_chunk, r_chunk);
     }
-    pair.assert_match("corr_multi_block", 4);
+    pair.assert_match("corr_multi_block", MAX_ULPS);
 }
 
 #[test]
@@ -875,7 +878,7 @@ fn ab_correlometer_clear_and_reprocess() {
     pair.clear();
     let (left, right) = gen_stereo_signal(50, 60, 48000);
     pair.process(&left, &right);
-    pair.assert_match("corr_clear_reprocess", 4);
+    pair.assert_match("corr_clear_reprocess", MAX_ULPS);
 }
 
 #[test]
@@ -884,7 +887,7 @@ fn ab_correlometer_left_only() {
     let sig = gen_sine(1000.0, SAMPLE_RATE, 48000, 0.7);
     let silence = gen_constant_signal(0.0, 48000);
     pair.process(&sig, &silence);
-    pair.assert_match("corr_left_only", 4);
+    pair.assert_match("corr_left_only", MAX_ULPS);
 }
 
 #[test]
@@ -893,12 +896,12 @@ fn ab_correlometer_different_windows() {
     let mut pair = CorrelometerPair::new(SAMPLE_RATE, 10.0);
     let sig = gen_sine(1000.0, SAMPLE_RATE, 48000, 0.8);
     pair.process(&sig, &sig);
-    pair.assert_match("corr_short_window", 4);
+    pair.assert_match("corr_short_window", MAX_ULPS);
 
     // Long window
     let mut pair2 = CorrelometerPair::new(SAMPLE_RATE, 1000.0);
     pair2.process(&sig, &sig);
-    pair2.assert_match("corr_long_window", 4);
+    pair2.assert_match("corr_long_window", MAX_ULPS);
 }
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -910,7 +913,7 @@ fn ab_panometer_center() {
     let mut pair = PanometerPair::new(SAMPLE_RATE, 300.0);
     let sig = gen_sine(1000.0, SAMPLE_RATE, 96000, 0.7);
     pair.process(&sig, &sig);
-    pair.assert_match("pan_center", 4);
+    pair.assert_match("pan_center", MAX_ULPS);
 }
 
 #[test]
@@ -919,7 +922,7 @@ fn ab_panometer_hard_left() {
     let sig = gen_sine(1000.0, SAMPLE_RATE, 96000, 0.7);
     let silence = gen_constant_signal(0.0, 96000);
     pair.process(&sig, &silence);
-    pair.assert_match("pan_hard_left", 4);
+    pair.assert_match("pan_hard_left", MAX_ULPS);
 }
 
 #[test]
@@ -928,7 +931,7 @@ fn ab_panometer_hard_right() {
     let sig = gen_sine(1000.0, SAMPLE_RATE, 96000, 0.7);
     let silence = gen_constant_signal(0.0, 96000);
     pair.process(&silence, &sig);
-    pair.assert_match("pan_hard_right", 4);
+    pair.assert_match("pan_hard_right", MAX_ULPS);
 }
 
 #[test]
@@ -936,7 +939,7 @@ fn ab_panometer_silence() {
     let mut pair = PanometerPair::new(SAMPLE_RATE, 300.0);
     let silence = gen_constant_signal(0.0, 48000);
     pair.process(&silence, &silence);
-    pair.assert_match("pan_silence", 4);
+    pair.assert_match("pan_silence", MAX_ULPS);
 }
 
 #[test]
@@ -944,7 +947,7 @@ fn ab_panometer_noise() {
     let mut pair = PanometerPair::new(SAMPLE_RATE, 300.0);
     let (left, right) = gen_stereo_signal(10, 20, 48000);
     pair.process(&left, &right);
-    pair.assert_match("pan_noise", 4);
+    pair.assert_match("pan_noise", MAX_ULPS);
 }
 
 #[test]
@@ -953,7 +956,7 @@ fn ab_panometer_dc() {
     let left = gen_constant_signal(0.8, 96000);
     let right = gen_constant_signal(0.2, 96000);
     pair.process(&left, &right);
-    pair.assert_match("pan_dc", 4);
+    pair.assert_match("pan_dc", MAX_ULPS);
 }
 
 #[test]
@@ -963,7 +966,7 @@ fn ab_panometer_panned() {
     let left: Vec<f32> = sig.iter().map(|&s| s * 0.8).collect();
     let right: Vec<f32> = sig.iter().map(|&s| s * 0.2).collect();
     pair.process(&left, &right);
-    pair.assert_match("pan_panned", 4);
+    pair.assert_match("pan_panned", MAX_ULPS);
 }
 
 #[test]
@@ -973,7 +976,7 @@ fn ab_panometer_multi_block() {
     for (l_chunk, r_chunk) in left.chunks(256).zip(right.chunks(256)) {
         pair.process(l_chunk, r_chunk);
     }
-    pair.assert_match("pan_multi_block", 4);
+    pair.assert_match("pan_multi_block", MAX_ULPS);
 }
 
 #[test]
@@ -986,7 +989,7 @@ fn ab_panometer_clear_and_reprocess() {
     pair.clear();
     let (left, right) = gen_stereo_signal(50, 60, 48000);
     pair.process(&left, &right);
-    pair.assert_match("pan_clear_reprocess", 4);
+    pair.assert_match("pan_clear_reprocess", MAX_ULPS);
 }
 
 #[test]
@@ -995,12 +998,12 @@ fn ab_panometer_different_windows() {
     let mut pair = PanometerPair::new(SAMPLE_RATE, 10.0);
     let sig = gen_sine(1000.0, SAMPLE_RATE, 48000, 0.8);
     pair.process(&sig, &sig);
-    pair.assert_match("pan_short_window", 4);
+    pair.assert_match("pan_short_window", MAX_ULPS);
 
     // Long window
     let mut pair2 = PanometerPair::new(SAMPLE_RATE, 1000.0);
     pair2.process(&sig, &sig);
-    pair2.assert_match("pan_long_window", 4);
+    pair2.assert_match("pan_long_window", MAX_ULPS);
 }
 
 #[test]
@@ -1020,6 +1023,6 @@ fn ab_panometer_symmetry() {
     let cpp_rl = unsafe { ref_panometer_read(&pair_rl.cpp) };
 
     // Check symmetry in both implementations
-    assert_values_match("pan_sym_lr", rust_lr, cpp_lr, 4);
-    assert_values_match("pan_sym_rl", rust_rl, cpp_rl, 4);
+    assert_values_match("pan_sym_lr", rust_lr, cpp_lr, MAX_ULPS);
+    assert_values_match("pan_sym_rl", rust_rl, cpp_rl, MAX_ULPS);
 }

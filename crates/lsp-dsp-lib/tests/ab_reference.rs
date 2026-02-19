@@ -11,6 +11,10 @@ use lsp_dsp_lib::types::*;
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 
+/// Maximum allowed ULP (units in last place) difference between Rust and C++.
+/// Tests that must be bit-exact pass `0` directly instead.
+const MAX_ULPS: i32 = 0;
+
 // ─── FFI bindings to C++ reference implementations ─────────────────────
 
 #[repr(C)]
@@ -470,7 +474,7 @@ fn ab_biquad_x1_sine_sweep() {
         ref_biquad_process_x1(cpp_out.as_mut_ptr(), src.as_ptr(), n, &mut cpp_f);
     }
 
-    assert_buffers_match("biquad_x1_sine_sweep", &rust_out, &cpp_out, 2);
+    assert_buffers_match("biquad_x1_sine_sweep", &rust_out, &cpp_out, MAX_ULPS);
 
     // Verify no NaN/inf in outputs
     let rust_has_nan = rust_out.iter().any(|x| !x.is_finite());
@@ -541,7 +545,7 @@ fn ab_biquad_x1_noise() {
         ref_biquad_process_x1(cpp_out.as_mut_ptr(), src.as_ptr(), n, &mut cpp_f);
     }
 
-    assert_buffers_match("biquad_x1_noise", &rust_out, &cpp_out, 2);
+    assert_buffers_match("biquad_x1_noise", &rust_out, &cpp_out, MAX_ULPS);
 }
 
 #[test]
@@ -594,7 +598,7 @@ fn ab_biquad_x4_noise() {
         ref_biquad_process_x4(cpp_out.as_mut_ptr(), src.as_ptr(), n, &mut cpp_f);
     }
 
-    assert_buffers_match("biquad_x4_noise", &rust_out, &cpp_out, 2);
+    assert_buffers_match("biquad_x4_noise", &rust_out, &cpp_out, MAX_ULPS);
 }
 
 #[test]
@@ -648,7 +652,7 @@ fn ab_biquad_x2_noise() {
         ref_biquad_process_x2(cpp_out.as_mut_ptr(), src.as_ptr(), n, &mut cpp_f);
     }
 
-    assert_buffers_match("biquad_x2_noise", &rust_out, &cpp_out, 2);
+    assert_buffers_match("biquad_x2_noise", &rust_out, &cpp_out, MAX_ULPS);
 }
 
 #[test]
@@ -700,7 +704,7 @@ fn ab_biquad_x8_noise() {
         ref_biquad_process_x8(cpp_out.as_mut_ptr(), src.as_ptr(), n, &mut cpp_f);
     }
 
-    assert_buffers_match("biquad_x8_noise", &rust_out, &cpp_out, 2);
+    assert_buffers_match("biquad_x8_noise", &rust_out, &cpp_out, MAX_ULPS);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -763,7 +767,7 @@ fn ab_compressor_x2_gain() {
         ref_compressor_x2_gain(cpp_out.as_mut_ptr(), src.as_ptr(), &ref_c, n);
     }
 
-    assert_buffers_match("compressor_x2_gain", &rust_out, &cpp_out, 4);
+    assert_buffers_match("compressor_x2_gain", &rust_out, &cpp_out, MAX_ULPS);
 }
 
 #[test]
@@ -816,7 +820,7 @@ fn ab_compressor_x2_curve() {
         ref_compressor_x2_curve(cpp_out.as_mut_ptr(), src.as_ptr(), &ref_c, n);
     }
 
-    assert_buffers_match("compressor_x2_curve", &rust_out, &cpp_out, 4);
+    assert_buffers_match("compressor_x2_curve", &rust_out, &cpp_out, MAX_ULPS);
 }
 
 #[test]
@@ -857,8 +861,8 @@ fn ab_gate_x1() {
         ref_gate_x1_curve(cpp_curve.as_mut_ptr(), src.as_ptr(), &ref_c, n);
     }
 
-    assert_buffers_match("gate_x1_gain", &rust_gain, &cpp_gain, 4);
-    assert_buffers_match("gate_x1_curve", &rust_curve, &cpp_curve, 4);
+    assert_buffers_match("gate_x1_gain", &rust_gain, &cpp_gain, MAX_ULPS);
+    assert_buffers_match("gate_x1_curve", &rust_curve, &cpp_curve, MAX_ULPS);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -883,7 +887,7 @@ fn ab_mix2() {
         ref_mix2(cpp_dst.as_mut_ptr(), src.as_ptr(), k1, k2, n);
     }
 
-    assert_buffers_match("mix2", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("mix2", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -911,7 +915,7 @@ fn ab_mix_copy2() {
         );
     }
 
-    assert_buffers_match("mix_copy2", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("mix_copy2", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -938,8 +942,8 @@ fn ab_lr_to_ms_roundtrip() {
         );
     }
 
-    assert_buffers_match("lr_to_ms (mid)", &rust_mid, &cpp_mid, 2);
-    assert_buffers_match("lr_to_ms (side)", &rust_side, &cpp_side, 2);
+    assert_buffers_match("lr_to_ms (mid)", &rust_mid, &cpp_mid, MAX_ULPS);
+    assert_buffers_match("lr_to_ms (side)", &rust_side, &cpp_side, MAX_ULPS);
 
     // Also verify roundtrip through ms_to_lr
     let mut rust_left = vec![0.0f32; n];
@@ -958,8 +962,8 @@ fn ab_lr_to_ms_roundtrip() {
         );
     }
 
-    assert_buffers_match("ms_to_lr (left)", &rust_left, &cpp_left, 2);
-    assert_buffers_match("ms_to_lr (right)", &rust_right, &cpp_right, 2);
+    assert_buffers_match("ms_to_lr (left)", &rust_left, &cpp_left, MAX_ULPS);
+    assert_buffers_match("ms_to_lr (right)", &rust_right, &cpp_right, MAX_ULPS);
 }
 
 #[test]
@@ -1160,7 +1164,7 @@ fn ab_uexpander_x1_gain() {
         ref_uexpander_x1_gain(cpp_out.as_mut_ptr(), src.as_ptr(), &ref_c, n);
     }
 
-    assert_buffers_match("uexpander_x1_gain", &rust_out, &cpp_out, 4);
+    assert_buffers_match("uexpander_x1_gain", &rust_out, &cpp_out, MAX_ULPS);
 }
 
 #[test]
@@ -1178,7 +1182,7 @@ fn ab_uexpander_x1_curve() {
         ref_uexpander_x1_curve(cpp_out.as_mut_ptr(), src.as_ptr(), &ref_c, n);
     }
 
-    assert_buffers_match("uexpander_x1_curve", &rust_out, &cpp_out, 4);
+    assert_buffers_match("uexpander_x1_curve", &rust_out, &cpp_out, MAX_ULPS);
 }
 
 #[test]
@@ -1196,7 +1200,7 @@ fn ab_uexpander_x1_gain_inplace() {
         ref_uexpander_x1_gain_inplace(cpp_buf.as_mut_ptr(), &ref_c, n);
     }
 
-    assert_buffers_match("uexpander_x1_gain_inplace", &rust_buf, &cpp_buf, 4);
+    assert_buffers_match("uexpander_x1_gain_inplace", &rust_buf, &cpp_buf, MAX_ULPS);
 }
 
 #[test]
@@ -1214,7 +1218,7 @@ fn ab_dexpander_x1_gain() {
         ref_dexpander_x1_gain(cpp_out.as_mut_ptr(), src.as_ptr(), &ref_c, n);
     }
 
-    assert_buffers_match("dexpander_x1_gain", &rust_out, &cpp_out, 4);
+    assert_buffers_match("dexpander_x1_gain", &rust_out, &cpp_out, MAX_ULPS);
 }
 
 #[test]
@@ -1232,7 +1236,7 @@ fn ab_dexpander_x1_curve() {
         ref_dexpander_x1_curve(cpp_out.as_mut_ptr(), src.as_ptr(), &ref_c, n);
     }
 
-    assert_buffers_match("dexpander_x1_curve", &rust_out, &cpp_out, 4);
+    assert_buffers_match("dexpander_x1_curve", &rust_out, &cpp_out, MAX_ULPS);
 }
 
 #[test]
@@ -1250,7 +1254,7 @@ fn ab_dexpander_x1_gain_inplace() {
         ref_dexpander_x1_gain_inplace(cpp_buf.as_mut_ptr(), &ref_c, n);
     }
 
-    assert_buffers_match("dexpander_x1_gain_inplace", &rust_buf, &cpp_buf, 4);
+    assert_buffers_match("dexpander_x1_gain_inplace", &rust_buf, &cpp_buf, MAX_ULPS);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1272,7 +1276,7 @@ fn ab_compressor_x2_gain_inplace() {
         ref_compressor_x2_gain_inplace(cpp_buf.as_mut_ptr(), &ref_c, n);
     }
 
-    assert_buffers_match("compressor_x2_gain_inplace", &rust_buf, &cpp_buf, 4);
+    assert_buffers_match("compressor_x2_gain_inplace", &rust_buf, &cpp_buf, MAX_ULPS);
 }
 
 #[test]
@@ -1290,7 +1294,7 @@ fn ab_gate_x1_gain_inplace() {
         ref_gate_x1_gain_inplace(cpp_buf.as_mut_ptr(), &ref_c, n);
     }
 
-    assert_buffers_match("gate_x1_gain_inplace", &rust_buf, &cpp_buf, 4);
+    assert_buffers_match("gate_x1_gain_inplace", &rust_buf, &cpp_buf, MAX_ULPS);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1387,7 +1391,7 @@ fn ab_mix_add2() {
         );
     }
 
-    assert_buffers_match("mix_add2", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("mix_add2", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -1417,7 +1421,7 @@ fn ab_mix3() {
         );
     }
 
-    assert_buffers_match("mix3", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("mix3", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -1447,7 +1451,7 @@ fn ab_mix_copy3() {
         );
     }
 
-    assert_buffers_match("mix_copy3", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("mix_copy3", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -1479,7 +1483,7 @@ fn ab_mix_add3() {
         );
     }
 
-    assert_buffers_match("mix_add3", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("mix_add3", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -1513,7 +1517,7 @@ fn ab_mix4() {
         );
     }
 
-    assert_buffers_match("mix4", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("mix4", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -1547,7 +1551,7 @@ fn ab_mix_copy4() {
         );
     }
 
-    assert_buffers_match("mix_copy4", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("mix_copy4", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -1583,7 +1587,7 @@ fn ab_mix_add4() {
         );
     }
 
-    assert_buffers_match("mix_add4", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("mix_add4", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1604,7 +1608,7 @@ fn ab_lr_to_mid() {
         ref_lr_to_mid(cpp_mid.as_mut_ptr(), left.as_ptr(), right.as_ptr(), n);
     }
 
-    assert_buffers_match("lr_to_mid", &rust_mid, &cpp_mid, 2);
+    assert_buffers_match("lr_to_mid", &rust_mid, &cpp_mid, MAX_ULPS);
 }
 
 #[test]
@@ -1621,7 +1625,7 @@ fn ab_lr_to_side() {
         ref_lr_to_side(cpp_side.as_mut_ptr(), left.as_ptr(), right.as_ptr(), n);
     }
 
-    assert_buffers_match("lr_to_side", &rust_side, &cpp_side, 2);
+    assert_buffers_match("lr_to_side", &rust_side, &cpp_side, MAX_ULPS);
 }
 
 #[test]
@@ -1638,7 +1642,7 @@ fn ab_ms_to_left() {
         ref_ms_to_left(cpp_left.as_mut_ptr(), mid.as_ptr(), side.as_ptr(), n);
     }
 
-    assert_buffers_match("ms_to_left", &rust_left, &cpp_left, 2);
+    assert_buffers_match("ms_to_left", &rust_left, &cpp_left, MAX_ULPS);
 }
 
 #[test]
@@ -1655,7 +1659,7 @@ fn ab_ms_to_right() {
         ref_ms_to_right(cpp_right.as_mut_ptr(), mid.as_ptr(), side.as_ptr(), n);
     }
 
-    assert_buffers_match("ms_to_right", &rust_right, &cpp_right, 2);
+    assert_buffers_match("ms_to_right", &rust_right, &cpp_right, MAX_ULPS);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1745,7 +1749,7 @@ fn ab_scalar_div() {
         ref_scalar_div(cpp_dst.as_mut_ptr(), divisor.as_ptr(), n);
     }
 
-    assert_buffers_match("scalar_div", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("scalar_div", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -1762,7 +1766,7 @@ fn ab_sqrt() {
         ref_sqrt(cpp_dst.as_mut_ptr(), src.as_ptr(), n);
     }
 
-    assert_buffers_match("sqrt", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("sqrt", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -1778,7 +1782,7 @@ fn ab_ln() {
         ref_ln(cpp_dst.as_mut_ptr(), src.as_ptr(), n);
     }
 
-    assert_buffers_match("ln", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("ln", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -1794,7 +1798,7 @@ fn ab_exp() {
         ref_exp(cpp_dst.as_mut_ptr(), src.as_ptr(), n);
     }
 
-    assert_buffers_match("exp", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("exp", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -1811,7 +1815,7 @@ fn ab_powf() {
         ref_powf(cpp_dst.as_mut_ptr(), src.as_ptr(), k, n);
     }
 
-    assert_buffers_match("powf", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("powf", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -1827,7 +1831,7 @@ fn ab_lin_to_db() {
         ref_lin_to_db(cpp_dst.as_mut_ptr(), src.as_ptr(), n);
     }
 
-    assert_buffers_match("lin_to_db", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("lin_to_db", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -1847,7 +1851,7 @@ fn ab_db_to_lin() {
         ref_db_to_lin(cpp_dst.as_mut_ptr(), src.as_ptr(), n);
     }
 
-    assert_buffers_match("db_to_lin", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("db_to_lin", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1919,7 +1923,7 @@ fn ab_packed_div() {
         ref_packed_div(cpp_dst.as_mut_ptr(), a.as_ptr(), b.as_ptr(), n);
     }
 
-    assert_buffers_match("packed_div", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("packed_div", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -2015,7 +2019,7 @@ fn ab_h_sum() {
     let rust_val = lsp_dsp_lib::math::horizontal::sum(&src);
     let cpp_val = unsafe { ref_h_sum(src.as_ptr(), n) };
 
-    assert_scalar_match("h_sum", rust_val, cpp_val, 4);
+    assert_scalar_match("h_sum", rust_val, cpp_val, MAX_ULPS);
 }
 
 #[test]
@@ -2026,7 +2030,7 @@ fn ab_h_abs_sum() {
     let rust_val = lsp_dsp_lib::math::horizontal::abs_sum(&src);
     let cpp_val = unsafe { ref_h_abs_sum(src.as_ptr(), n) };
 
-    assert_scalar_match("h_abs_sum", rust_val, cpp_val, 4);
+    assert_scalar_match("h_abs_sum", rust_val, cpp_val, MAX_ULPS);
 }
 
 #[test]
@@ -2037,7 +2041,7 @@ fn ab_h_sqr_sum() {
     let rust_val = lsp_dsp_lib::math::horizontal::sqr_sum(&src);
     let cpp_val = unsafe { ref_h_sqr_sum(src.as_ptr(), n) };
 
-    assert_scalar_match("h_sqr_sum", rust_val, cpp_val, 4);
+    assert_scalar_match("h_sqr_sum", rust_val, cpp_val, MAX_ULPS);
 }
 
 #[test]
@@ -2048,7 +2052,7 @@ fn ab_h_rms() {
     let rust_val = lsp_dsp_lib::math::horizontal::rms(&src);
     let cpp_val = unsafe { ref_h_rms(src.as_ptr(), n) };
 
-    assert_scalar_match("h_rms", rust_val, cpp_val, 4);
+    assert_scalar_match("h_rms", rust_val, cpp_val, MAX_ULPS);
 }
 
 #[test]
@@ -2059,7 +2063,7 @@ fn ab_h_mean() {
     let rust_val = lsp_dsp_lib::math::horizontal::mean(&src);
     let cpp_val = unsafe { ref_h_mean(src.as_ptr(), n) };
 
-    assert_scalar_match("h_mean", rust_val, cpp_val, 4);
+    assert_scalar_match("h_mean", rust_val, cpp_val, MAX_ULPS);
 }
 
 #[test]
@@ -2243,8 +2247,8 @@ fn ab_complex_mul() {
         );
     }
 
-    assert_buffers_match("complex_mul (re)", &rust_re, &cpp_re, 2);
-    assert_buffers_match("complex_mul (im)", &rust_im, &cpp_im, 2);
+    assert_buffers_match("complex_mul (re)", &rust_re, &cpp_re, MAX_ULPS);
+    assert_buffers_match("complex_mul (im)", &rust_im, &cpp_im, MAX_ULPS);
 }
 
 #[test]
@@ -2274,8 +2278,8 @@ fn ab_complex_div() {
         );
     }
 
-    assert_buffers_match("complex_div (re)", &rust_re, &cpp_re, 4);
-    assert_buffers_match("complex_div (im)", &rust_im, &cpp_im, 4);
+    assert_buffers_match("complex_div (re)", &rust_re, &cpp_re, MAX_ULPS);
+    assert_buffers_match("complex_div (im)", &rust_im, &cpp_im, MAX_ULPS);
 }
 
 #[test]
@@ -2318,7 +2322,7 @@ fn ab_complex_mag() {
         ref_complex_mag(cpp_dst.as_mut_ptr(), re.as_ptr(), im.as_ptr(), n);
     }
 
-    assert_buffers_match("complex_mag", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("complex_mag", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -2335,7 +2339,7 @@ fn ab_complex_arg() {
         ref_complex_arg(cpp_dst.as_mut_ptr(), re.as_ptr(), im.as_ptr(), n);
     }
 
-    assert_buffers_match("complex_arg", &rust_dst, &cpp_dst, 2);
+    assert_buffers_match("complex_arg", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -2364,8 +2368,8 @@ fn ab_complex_from_polar() {
         );
     }
 
-    assert_buffers_match("complex_from_polar (re)", &rust_re, &cpp_re, 2);
-    assert_buffers_match("complex_from_polar (im)", &rust_im, &cpp_im, 2);
+    assert_buffers_match("complex_from_polar (re)", &rust_re, &cpp_re, MAX_ULPS);
+    assert_buffers_match("complex_from_polar (im)", &rust_im, &cpp_im, MAX_ULPS);
 }
 
 #[test]
@@ -2640,7 +2644,7 @@ fn ab_auto_correlate() {
     }
 
     // Correlation accumulates many products, so allow slightly wider tolerance
-    assert_buffers_match("auto_correlate", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("auto_correlate", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -2658,7 +2662,7 @@ fn ab_cross_correlate() {
         ref_cross_correlate(cpp_dst.as_mut_ptr(), a.as_ptr(), b.as_ptr(), lag_count, n);
     }
 
-    assert_buffers_match("cross_correlate", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("cross_correlate", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -2671,7 +2675,12 @@ fn ab_correlation_coefficient() {
     let cpp_result = unsafe { ref_correlation_coefficient(a.as_ptr(), b.as_ptr(), n) };
 
     // f64 intermediate precision means results should match very closely
-    assert_buffers_match("correlation_coefficient", &[rust_result], &[cpp_result], 2);
+    assert_buffers_match(
+        "correlation_coefficient",
+        &[rust_result],
+        &[cpp_result],
+        MAX_ULPS,
+    );
 }
 
 #[test]
@@ -2749,7 +2758,7 @@ fn ab_convolve_short_kernel() {
         )
     };
 
-    assert_buffers_match("convolve (short kernel)", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("convolve (short kernel)", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -2773,7 +2782,7 @@ fn ab_convolve_long_kernel() {
         )
     };
 
-    assert_buffers_match("convolve (long kernel)", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("convolve (long kernel)", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -2798,7 +2807,7 @@ fn ab_convolve_impulse() {
         )
     };
 
-    assert_buffers_match("convolve (impulse)", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("convolve (impulse)", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -2822,7 +2831,7 @@ fn ab_correlate_random() {
         )
     };
 
-    assert_buffers_match("correlate (random)", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("correlate (random)", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -2922,7 +2931,7 @@ fn ab_upsample_2x_dc() {
     let mut cpp_dst = vec![0.0f32; out_len];
     unsafe { ref_upsample(cpp_dst.as_mut_ptr(), out_len, src.as_ptr(), n, 2, 3) };
 
-    assert_buffers_match("upsample 2x DC", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("upsample 2x DC", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -2937,7 +2946,7 @@ fn ab_upsample_2x_random() {
     let mut cpp_dst = vec![0.0f32; out_len];
     unsafe { ref_upsample(cpp_dst.as_mut_ptr(), out_len, src.as_ptr(), n, 2, 3) };
 
-    assert_buffers_match("upsample 2x random", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("upsample 2x random", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -2952,7 +2961,7 @@ fn ab_upsample_4x_random() {
     let mut cpp_dst = vec![0.0f32; out_len];
     unsafe { ref_upsample(cpp_dst.as_mut_ptr(), out_len, src.as_ptr(), n, 4, 3) };
 
-    assert_buffers_match("upsample 4x random", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("upsample 4x random", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -2967,7 +2976,7 @@ fn ab_downsample_2x_dc() {
     let mut cpp_dst = vec![0.0f32; out_len];
     unsafe { ref_downsample(cpp_dst.as_mut_ptr(), out_len, src.as_ptr(), n, 2, 3) };
 
-    assert_buffers_match("downsample 2x DC", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("downsample 2x DC", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -2982,7 +2991,7 @@ fn ab_downsample_2x_random() {
     let mut cpp_dst = vec![0.0f32; out_len];
     unsafe { ref_downsample(cpp_dst.as_mut_ptr(), out_len, src.as_ptr(), n, 2, 3) };
 
-    assert_buffers_match("downsample 2x random", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("downsample 2x random", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -2997,7 +3006,7 @@ fn ab_downsample_4x_random() {
     let mut cpp_dst = vec![0.0f32; out_len];
     unsafe { ref_downsample(cpp_dst.as_mut_ptr(), out_len, src.as_ptr(), n, 4, 3) };
 
-    assert_buffers_match("downsample 4x random", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("downsample 4x random", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -3022,7 +3031,7 @@ fn ab_resample_48k_to_44k1() {
         )
     };
 
-    assert_buffers_match("resample 48k->44.1k", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("resample 48k->44.1k", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -3047,7 +3056,7 @@ fn ab_resample_44k1_to_48k() {
         )
     };
 
-    assert_buffers_match("resample 44.1k->48k", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("resample 44.1k->48k", &rust_dst, &cpp_dst, MAX_ULPS);
 }
 
 #[test]
@@ -3061,5 +3070,5 @@ fn ab_resample_same_rate() {
     let mut cpp_dst = vec![0.0f32; n];
     unsafe { ref_resample(cpp_dst.as_mut_ptr(), n, src.as_ptr(), n, 48000, 48000, 3) };
 
-    assert_buffers_match("resample same rate", &rust_dst, &cpp_dst, 4);
+    assert_buffers_match("resample same rate", &rust_dst, &cpp_dst, MAX_ULPS);
 }
