@@ -597,6 +597,94 @@ fn ab_upstream_compressor_multi_block() {
     }
 }
 
+// ─── Compressor: parameter sweep ─────────────────────────────────────
+
+#[test]
+fn ab_upstream_compressor_param_sweep() {
+    let configs: &[(CompressorMode, f32, f32, f32, f32, f32, f32, f32, f32, &str)] = &[
+        // (mode, atk_th, rel_th, boost_th, ratio, knee, attack, release, hold, label)
+        // Low threshold, extreme ratio, fast attack
+        (
+            CompressorMode::Downward,
+            0.1,
+            0.05,
+            0.02,
+            50.0,
+            0.02,
+            0.5,
+            20.0,
+            0.0,
+            "low_thr_fast",
+        ),
+        // High threshold, gentle ratio, slow envelope
+        (
+            CompressorMode::Downward,
+            0.9,
+            0.7,
+            0.3,
+            1.5,
+            0.3,
+            50.0,
+            500.0,
+            0.0,
+            "hi_thr_slow",
+        ),
+        // Wide knee, medium settings
+        (
+            CompressorMode::Downward,
+            0.4,
+            0.2,
+            0.1,
+            8.0,
+            0.5,
+            3.0,
+            80.0,
+            10.0,
+            "wide_knee",
+        ),
+        // Upward with aggressive settings
+        (
+            CompressorMode::Upward,
+            0.2,
+            0.1,
+            0.05,
+            6.0,
+            0.15,
+            2.0,
+            40.0,
+            5.0,
+            "up_aggressive",
+        ),
+        // Boosting with different params
+        (
+            CompressorMode::Boosting,
+            0.7,
+            0.5,
+            0.3,
+            3.0,
+            0.2,
+            15.0,
+            200.0,
+            15.0,
+            "boost_varied",
+        ),
+    ];
+
+    let input = gen_test_signal(900, BLOCK_SIZE);
+    for (mode, at, rt, bt, ratio, knee, attack, release, hold, label) in configs {
+        let mut pair = UpstreamCompressorPair::new(
+            *mode, *at, *rt, *bt, *ratio, *knee, *attack, *release, *hold,
+        );
+        let (rust, upstream) = pair.process(&input);
+        assert_buffers_match(
+            &format!("comp_sweep_{label}"),
+            &rust,
+            &upstream,
+            MAX_ULPS_DYNAMICS,
+        );
+    }
+}
+
 #[test]
 fn ab_upstream_compressor_clear_reprocess() {
     let mut pair = UpstreamCompressorPair::new(
@@ -777,6 +865,88 @@ fn ab_upstream_expander_multi_block() {
     for chunk in signal.chunks(256) {
         let (rust, upstream) = pair.process(chunk);
         assert_buffers_match("exp_down_multi", &rust, &upstream, MAX_ULPS_DYNAMICS);
+    }
+}
+
+// ─── Expander: parameter sweep ───────────────────────────────────────
+
+#[test]
+fn ab_upstream_expander_param_sweep() {
+    let configs: &[(ExpanderMode, f32, f32, f32, f32, f32, f32, f32, &str)] = &[
+        // (mode, atk_th, rel_th, ratio, knee, attack, release, hold, label)
+        // High threshold, high ratio, fast attack
+        (
+            ExpanderMode::Downward,
+            0.7,
+            0.5,
+            8.0,
+            0.3,
+            1.0,
+            30.0,
+            0.0,
+            "hi_thr_fast",
+        ),
+        // Low threshold, gentle ratio, slow envelope
+        (
+            ExpanderMode::Downward,
+            0.05,
+            0.02,
+            1.5,
+            0.05,
+            30.0,
+            300.0,
+            0.0,
+            "lo_thr_slow",
+        ),
+        // Wide knee with hold
+        (
+            ExpanderMode::Downward,
+            0.4,
+            0.2,
+            4.0,
+            0.5,
+            5.0,
+            80.0,
+            25.0,
+            "wide_knee_hold",
+        ),
+        // Upward, aggressive
+        (
+            ExpanderMode::Upward,
+            0.5,
+            0.3,
+            6.0,
+            0.2,
+            2.0,
+            50.0,
+            0.0,
+            "up_aggressive",
+        ),
+        // Upward, gentle with hold
+        (
+            ExpanderMode::Upward,
+            0.2,
+            0.1,
+            1.5,
+            0.4,
+            20.0,
+            200.0,
+            10.0,
+            "up_gentle_hold",
+        ),
+    ];
+
+    let input = gen_test_signal(901, BLOCK_SIZE);
+    for (mode, at, rt, ratio, knee, attack, release, hold, label) in configs {
+        let mut pair =
+            UpstreamExpanderPair::new(*mode, *at, *rt, *ratio, *knee, *attack, *release, *hold);
+        let (rust, upstream) = pair.process(&input);
+        assert_buffers_match(
+            &format!("exp_sweep_{label}"),
+            &rust,
+            &upstream,
+            MAX_ULPS_DYNAMICS,
+        );
     }
 }
 
@@ -965,6 +1135,58 @@ fn ab_upstream_filter_notch_noise() {
     );
 }
 
+// ─── Filter: parameter sweep ─────────────────────────────────────────
+
+#[test]
+fn ab_upstream_filter_param_sweep() {
+    let configs: &[(FilterType, f32, f32, f32, &str)] = &[
+        // (type, freq, q, gain_db, label)
+        // Lowpass at very low cutoff
+        (FilterType::Lowpass, 80.0, 2.0, 0.0, "lp_80hz_q2"),
+        // Highpass at high cutoff, high Q
+        (FilterType::Highpass, 12000.0, 4.0, 0.0, "hp_12k_q4"),
+        // Peaking: narrow boost at 3kHz
+        (FilterType::Peaking, 3000.0, 10.0, 18.0, "peak_3k_q10_18db"),
+        // Peaking: wide cut
+        (FilterType::Peaking, 500.0, 0.3, -12.0, "peak_500_wide_cut"),
+        // LowShelf: aggressive boost at sub-bass
+        (FilterType::LowShelf, 60.0, 0.5, 12.0, "loshelf_60_12db"),
+        // HighShelf: aggressive cut at treble
+        (
+            FilterType::HighShelf,
+            10000.0,
+            1.0,
+            -15.0,
+            "hishelf_10k_m15db",
+        ),
+        // Bandpass at mid frequency
+        (
+            FilterType::BandpassConstantPeak,
+            2000.0,
+            5.0,
+            0.0,
+            "bp_2k_q5",
+        ),
+        // Allpass
+        (FilterType::Allpass, 1000.0, 3.0, 0.0, "ap_1k_q3"),
+    ];
+
+    let input = gen_test_signal(902, BLOCK_SIZE);
+    for (ft, freq, q, gain, label) in configs {
+        let mut pair = UpstreamFilterPair::new(*ft, *freq, *q, *gain, SAMPLE_RATE);
+        let (rust, upstream) = pair.process(&input);
+        // Higher abs_floor for extreme configs: low-cutoff / high-Q filters
+        // have longer transients where error compounds at sub-noise-floor levels.
+        assert_buffers_match_rel(
+            &format!("filt_sweep_{label}"),
+            &rust,
+            &upstream,
+            MAX_REL_ERROR_FILTER,
+            1e-3,
+        );
+    }
+}
+
 #[test]
 fn ab_upstream_filter_lowshelf_noise() {
     let mut pair = UpstreamFilterPair::new(
@@ -1086,6 +1308,37 @@ fn ab_upstream_butterworth_hp6_noise() {
     let (rust, upstream) =
         run_upstream_butterworth(ButterworthType::Highpass, 3000.0, 6, SAMPLE_RATE, &input);
     assert_buffers_match_rel("bw_hp6_noise", &rust, &upstream, MAX_REL_ERROR_FILTER, 1e-5);
+}
+
+// ─── Butterworth: parameter sweep ────────────────────────────────────
+
+#[test]
+fn ab_upstream_butterworth_param_sweep() {
+    let configs: &[(ButterworthType, f32, i32, &str)] = &[
+        // (type, cutoff, order, label)
+        // Very low cutoff LP
+        (ButterworthType::Lowpass, 50.0, 4, "lp_50hz_o4"),
+        // High cutoff LP, high order
+        (ButterworthType::Lowpass, 15000.0, 8, "lp_15k_o8"),
+        // Low cutoff HP
+        (ButterworthType::Highpass, 200.0, 6, "hp_200_o6"),
+        // Nyquist-adjacent HP
+        (ButterworthType::Highpass, 20000.0, 2, "hp_20k_o2"),
+        // Odd order
+        (ButterworthType::Lowpass, 5000.0, 3, "lp_5k_o3"),
+    ];
+
+    let input = gen_test_signal(903, BLOCK_SIZE);
+    for (ft, cutoff, order, label) in configs {
+        let (rust, upstream) = run_upstream_butterworth(*ft, *cutoff, *order, SAMPLE_RATE, &input);
+        assert_buffers_match_rel(
+            &format!("bw_sweep_{label}"),
+            &rust,
+            &upstream,
+            MAX_REL_ERROR_FILTER,
+            1e-3,
+        );
+    }
 }
 
 #[test]
@@ -1218,6 +1471,293 @@ fn ab_upstream_equalizer_4band() {
         &upstream_out,
         MAX_REL_ERROR_FILTER,
         1e-5,
+    );
+}
+
+// ─── Equalizer: parameter sweep ──────────────────────────────────────
+
+fn run_eq_test(
+    bands: &[(FilterType, RefFilterType, f32, f32, f32)],
+    input: &[f32],
+    label: &str,
+    abs_floor: f32,
+    max_rel_err: f32,
+) {
+    let n = input.len();
+
+    let mut eq = Equalizer::new(bands.len());
+    eq.set_sample_rate(SAMPLE_RATE);
+    for (i, (ft, _, freq, q, gain)) in bands.iter().enumerate() {
+        eq.band_mut(i)
+            .set_filter_type(*ft)
+            .set_frequency(*freq)
+            .set_q(*q)
+            .set_gain(*gain)
+            .set_enabled(true);
+    }
+    eq.update_settings();
+    let mut rust_out = vec![0.0f32; n];
+    eq.process(&mut rust_out, input);
+
+    let ref_state = unsafe {
+        let mut s: RefEqualizerState = std::mem::zeroed();
+        ref_equalizer_init(&mut s, SAMPLE_RATE, bands.len() as i32);
+        for (i, (_, rft, freq, q, gain)) in bands.iter().enumerate() {
+            s.bands[i].filter_type = *rft;
+            s.bands[i].frequency = *freq;
+            s.bands[i].q = *q;
+            s.bands[i].gain = *gain;
+            s.bands[i].enabled = 1;
+        }
+        ref_equalizer_update(&mut s);
+        s
+    };
+
+    let n_bands = ref_state.n_bands as usize;
+    let mut bqs: Vec<RefBiquad> = (0..n_bands)
+        .map(|i| {
+            let f = &ref_state.filters[i];
+            RefBiquad {
+                d: [0.0; 16],
+                coeffs: RefBiquadCoeffs {
+                    x1: ManuallyDrop::new(RefBiquadX1 {
+                        b0: f.b0,
+                        b1: f.b1,
+                        b2: f.b2,
+                        a1: f.a1,
+                        a2: f.a2,
+                        p0: 0.0,
+                        p1: 0.0,
+                        p2: 0.0,
+                    }),
+                },
+                __pad: [0.0; 8],
+            }
+        })
+        .collect();
+
+    let mut upstream_out = vec![0.0f32; n];
+    let mut tmp = vec![0.0f32; n];
+    unsafe {
+        upstream_units_biquad_process_x1(upstream_out.as_mut_ptr(), input.as_ptr(), n, &mut bqs[0]);
+        for i in 1..n_bands {
+            tmp.copy_from_slice(&upstream_out);
+            upstream_units_biquad_process_x1(
+                upstream_out.as_mut_ptr(),
+                tmp.as_ptr(),
+                n,
+                &mut bqs[i],
+            );
+        }
+    }
+
+    assert_buffers_match_rel(label, &rust_out, &upstream_out, max_rel_err, abs_floor);
+}
+
+#[test]
+fn ab_upstream_equalizer_2band_heavy_boost() {
+    let input = gen_test_signal(910, BLOCK_SIZE);
+    run_eq_test(
+        &[
+            (
+                FilterType::LowShelf,
+                RefFilterType::LowShelf,
+                80.0,
+                0.5,
+                15.0,
+            ),
+            (
+                FilterType::HighShelf,
+                RefFilterType::HighShelf,
+                12000.0,
+                0.5,
+                15.0,
+            ),
+        ],
+        &input,
+        "eq_2band_boost",
+        2e-3,
+        MAX_REL_ERROR_FILTER,
+    );
+}
+
+#[test]
+fn ab_upstream_equalizer_6band_surgical() {
+    let input = gen_test_signal(911, BLOCK_SIZE);
+    run_eq_test(
+        &[
+            (
+                FilterType::Highpass,
+                RefFilterType::Highpass,
+                30.0,
+                std::f32::consts::FRAC_1_SQRT_2,
+                0.0,
+            ),
+            (
+                FilterType::Peaking,
+                RefFilterType::Peaking,
+                250.0,
+                8.0,
+                -6.0,
+            ),
+            (FilterType::Peaking, RefFilterType::Peaking, 800.0, 3.0, 4.0),
+            (
+                FilterType::Peaking,
+                RefFilterType::Peaking,
+                3000.0,
+                5.0,
+                -8.0,
+            ),
+            (
+                FilterType::Peaking,
+                RefFilterType::Peaking,
+                8000.0,
+                2.0,
+                3.0,
+            ),
+            (
+                FilterType::Lowpass,
+                RefFilterType::Lowpass,
+                18000.0,
+                std::f32::consts::FRAC_1_SQRT_2,
+                0.0,
+            ),
+        ],
+        &input,
+        "eq_6band_surgical",
+        2e-3,
+        0.10, // 6 cascaded biquads: each compounds ~1% SIMD rounding
+    );
+}
+
+#[test]
+fn ab_upstream_equalizer_extreme_q() {
+    let input = gen_test_signal(912, BLOCK_SIZE);
+    run_eq_test(
+        &[
+            (
+                FilterType::Peaking,
+                RefFilterType::Peaking,
+                1000.0,
+                20.0,
+                18.0,
+            ),
+            (FilterType::Notch, RefFilterType::Notch, 4000.0, 30.0, 0.0),
+            (
+                FilterType::Peaking,
+                RefFilterType::Peaking,
+                8000.0,
+                15.0,
+                -12.0,
+            ),
+        ],
+        &input,
+        "eq_extreme_q",
+        1e-3,
+        MAX_REL_ERROR_FILTER,
+    );
+}
+
+#[test]
+fn ab_upstream_equalizer_heavy_cut() {
+    let input = gen_test_signal(913, BLOCK_SIZE);
+    run_eq_test(
+        &[
+            (
+                FilterType::LowShelf,
+                RefFilterType::LowShelf,
+                200.0,
+                1.0,
+                -18.0,
+            ),
+            (
+                FilterType::Peaking,
+                RefFilterType::Peaking,
+                1000.0,
+                1.0,
+                -15.0,
+            ),
+            (
+                FilterType::HighShelf,
+                RefFilterType::HighShelf,
+                5000.0,
+                1.0,
+                -18.0,
+            ),
+        ],
+        &input,
+        "eq_heavy_cut",
+        1e-3,
+        MAX_REL_ERROR_FILTER,
+    );
+}
+
+#[test]
+fn ab_upstream_equalizer_8band_full() {
+    let input = gen_test_signal(914, BLOCK_SIZE);
+    run_eq_test(
+        &[
+            (
+                FilterType::Highpass,
+                RefFilterType::Highpass,
+                40.0,
+                0.7,
+                0.0,
+            ),
+            (
+                FilterType::LowShelf,
+                RefFilterType::LowShelf,
+                100.0,
+                0.7,
+                4.0,
+            ),
+            (
+                FilterType::Peaking,
+                RefFilterType::Peaking,
+                400.0,
+                2.0,
+                -3.0,
+            ),
+            (
+                FilterType::Peaking,
+                RefFilterType::Peaking,
+                1200.0,
+                1.5,
+                2.0,
+            ),
+            (
+                FilterType::Peaking,
+                RefFilterType::Peaking,
+                3000.0,
+                3.0,
+                -5.0,
+            ),
+            (
+                FilterType::Peaking,
+                RefFilterType::Peaking,
+                6000.0,
+                1.0,
+                1.5,
+            ),
+            (
+                FilterType::HighShelf,
+                RefFilterType::HighShelf,
+                10000.0,
+                0.7,
+                -3.0,
+            ),
+            (
+                FilterType::Lowpass,
+                RefFilterType::Lowpass,
+                20000.0,
+                0.7,
+                0.0,
+            ),
+        ],
+        &input,
+        "eq_8band_full",
+        2e-3,
+        0.10, // 8 cascaded biquads: each compounds ~1% SIMD rounding
     );
 }
 
@@ -1395,6 +1935,62 @@ fn ab_upstream_limiter_line_duck_noise() {
     let input = gen_test_signal(555, LIM_BLOCK);
     let (rust, upstream) = pair.process(&input);
     assert_buffers_match("lim_line_duck_noise", &rust, &upstream, MAX_ULPS_DYNAMICS);
+}
+
+// ─── Limiter: parameter sweep ────────────────────────────────────────
+
+#[test]
+fn ab_upstream_limiter_param_sweep() {
+    let configs: &[(LimiterMode, f32, f32, f32, f32, f32, &str)] = &[
+        // (mode, threshold, attack, release, lookahead, knee, label)
+        // Low threshold, fast attack
+        (
+            LimiterMode::HermThin,
+            0.1,
+            1.0,
+            20.0,
+            5.0,
+            0.3,
+            "lo_thr_fast",
+        ),
+        // High threshold, slow release
+        (
+            LimiterMode::HermWide,
+            0.9,
+            8.0,
+            200.0,
+            8.0,
+            0.7,
+            "hi_thr_slow",
+        ),
+        // Short lookahead, tight knee
+        (LimiterMode::LineThin, 0.3, 2.0, 30.0, 2.0, 0.2, "short_lk"),
+        // Long lookahead, wide knee
+        (
+            LimiterMode::LineWide,
+            0.4,
+            5.0,
+            100.0,
+            10.0,
+            0.8,
+            "long_lk_wide",
+        ),
+        // ExpWide (only matching EXP mode) with different params
+        (LimiterMode::ExpWide, 0.2, 3.0, 60.0, 7.0, 0.4, "exp_varied"),
+    ];
+
+    let input = gen_test_signal(904, LIM_BLOCK);
+    for (mode, threshold, attack, release, lookahead, knee, label) in configs {
+        let mut pair =
+            UpstreamLimiterPair::new(*mode, *threshold, *attack, *release, *lookahead, *knee);
+        let (rust, upstream) = pair.process(&input);
+        assert_buffers_match(
+            &format!("lim_sweep_{label}"),
+            &rust,
+            &upstream,
+            MAX_ULPS_DYNAMICS,
+        );
+    }
 }
 
 #[test]
