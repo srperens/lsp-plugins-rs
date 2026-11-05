@@ -1,5 +1,17 @@
 # lsp-plugins-rs
 
+> [!WARNING]
+> **This repository is archived and will be deleted on 2027-05-05.**
+>
+> It contains known errors and will not be developed further. No fixes,
+> releases or support will follow. Do not use it in new work.
+>
+> Strom drops it in [Eyevinn/strom#1226](https://github.com/Eyevinn/strom/pull/1226).
+> Earlier Strom releases build against a tag here, and will only build from
+> source until the deletion date. If you build anything against this repo,
+> by git tag or otherwise, move off it before then. For the LSP DSP
+> itself, use the original [lsp-plugins](https://github.com/lsp-plugins).
+
 Rust port of [lsp-plugins](https://github.com/lsp-plugins) — professional audio DSP processing, exposed as GStreamer plugins.
 
 ## Overview
